@@ -7,9 +7,8 @@ import numpy as np
 def processed_image(img):
     # Masque pour isoler les zones blanches
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    sensitivity = 100
-    lower_white = np.array([0, 0, 255-sensitivity])
-    upper_white = np.array([255, sensitivity, 255])
+    lower_white = np.array([0, 0, 120])
+    upper_white = np.array([180, 80, 255])
     mask = cv2.inRange(hsv, lower_white, upper_white)
 
     # Appliquer le masque à l'image en niveaux de gris
@@ -22,8 +21,4 @@ def processed_image(img):
     # Réduire le bruit avec un filtre bilatéral
     blur = cv2.bilateralFilter(masked_gray, 9, 75, 75)
 
-    # Dilatation pour agrandir les zones blanches
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
-    dilated = cv2.dilate(blur, kernel)
-
-    return dilated
+    return blur
