@@ -1,8 +1,5 @@
 import cv2
 import time
-import os
-import numpy as np
-from datetime import datetime
 from shape_detector import shape_detector
 from save_detection import save_detection
 
