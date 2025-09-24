@@ -4,7 +4,7 @@ from image_preprocessing import processed_image
 # Détection des contours et filtrage des quadrilatères
 
 
-def detect_paper(img):
+def shape_detector(img):
     proc = processed_image(img)
     # Détection des bords
     edges = cv2.Canny(proc, 50, 150)
