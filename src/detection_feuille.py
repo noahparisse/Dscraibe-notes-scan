@@ -1,5 +1,9 @@
 import cv2
 import numpy as np
+import time
+
+# Timer
+start = time.time()
 
 cap = cv2.VideoCapture(0)
 cap.set(3, 640)
@@ -50,7 +54,10 @@ while True:
     cv2.drawContours(img_show, possible_papers, -1, (0, 255, 0), 2)
     cv2.imshow('Webcam', img_show)
 
-    if cv2.waitKey(1) == ord('q'):
+    # if cv2.waitKey(1) == ord('q'):
+    #    break
+
+    if time.time() - start > 30:
         break
 
 cap.release()
