@@ -4,6 +4,7 @@ from picamera2 import Picamera2
 from picamera2.encoders import H264Encoder
 import os
 import subprocess
+from datetime import datetime
 
 # Création des dossiers de travail
 
@@ -12,11 +13,12 @@ import subprocess
 
 os.makedirs("./sampleH264", exist_ok=True)
 os.makedirs("./sampleMP4", exist_ok=True)
+os.makedirs("./photos", exist_ok=True)
 
 # Initialisation de la caméra
 
 picam2 = Picamera2()
-# picam2.start()
+picam2.start()
 # time.sleep(2)  # laisser la caméra ajuster la lumière
 
 # Paramètres vidéo
@@ -47,7 +49,7 @@ def detect_paper(img):
     return candidates
 
 start = time.time()
-duration = 10  # secondes
+duration = 30  # secondes
 interval = 4    # secondes
 encoder = H264Encoder(bitrate=10000000)
 i = 0
@@ -60,13 +62,16 @@ try:
         time.sleep(interval)
 
         # Capture d'images
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"photo_{timestamp}.jpg"
+        picam2.capture_file(filename)
 
         # Capture de vidéos
 
-        filename = "./sampleH264/sample" + str(i) + ".h264"
-        picam2.start_recording(encoder, filename)
-        time.sleep(1)
-        picam2.stop_recording()
+        # filename = "./sampleH264/sample" + str(i) + ".h264"
+        # picam2.start_recording(encoder, filename)
+        # time.sleep(1)
+        # picam2.stop_recording()
 
         # Création d'une vidéo à partir de frames
 
@@ -75,22 +80,22 @@ try:
         # cv2.drawContours(frame, papers, -1, (0,255,0), 2)
         # out.write(frame)  # écrire la frame dans la vidéo
 finally:
-    # picam2.stop()
+    picam2.stop()
     # out.release()
     # print("Vidéo enregistrée dans :", video_filename)
-    source_folder = "./sampleH264"
-    dest_folder = "./sampleMP4"
-    filenames = os.listdir(source_folder)
-    for f in filenames :
-        # Conversion en MP4
-        h264_file = os.path.join(source_folder, f)
-        mp4_file = os.path.join(dest_folder, f[:-5]+".mp4")
-        subprocess.run([
-            "ffmpeg",
-            "-framerate", "30",       # framerate utilisé à l'enregistrement
-            "-i", h264_file,          # fichier source
-            "-c", "copy",             # copie le flux H264 sans ré-encodage
-            mp4_file                  # fichier de sortie
-        ])
-        # os.remove(h264_file)
+    # source_folder = "./sampleH264"
+    # dest_folder = "./sampleMP4"
+    # filenames = os.listdir(source_folder)
+    # for f in filenames :
+    #     # Conversion en MP4
+    #     h264_file = os.path.join(source_folder, f)
+    #     mp4_file = os.path.join(dest_folder, f[:-5]+".mp4")
+    #     subprocess.run([
+    #         "ffmpeg",
+    #         "-framerate", "30",       # framerate utilisé à l'enregistrement
+    #         "-i", h264_file,          # fichier source
+    #         "-c", "copy",             # copie le flux H264 sans ré-encodage
+    #         mp4_file                  # fichier de sortie
+    #     ])
+    #     # os.remove(h264_file)
 
