@@ -19,6 +19,6 @@ def shape_detector(img):
         approx = cv2.approxPolyDP(cnt, 0.02 * perimeter, True)
 
         # On ne garde que les quadrilatères assez grands
-        if len(approx) == 4 and cv2.contourArea(cnt) > 1000 and cv2.isContourConvex(approx):
+        if len(approx) == 4 and cv2.contourArea(cnt) > 2000 and cv2.isContourConvex(approx):
             valid_shapes.append(approx)
     return valid_shapes

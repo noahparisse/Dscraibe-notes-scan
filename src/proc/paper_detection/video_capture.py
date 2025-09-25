@@ -14,8 +14,8 @@ cap = cv2.VideoCapture(0)
 while True:
     ret, img = cap.read()
     possible_papers = shape_detector(img)
-    # img_show = img.copy()
-    img_show = preprocessed_image(img)
+    img_show = img.copy()
+    # img_show = preprocessed_image(img)
 
     # Dessiner les contours sur l'image originale
     cv2.drawContours(img_show, possible_papers, -1, (0, 255, 0), 2)
@@ -30,7 +30,7 @@ while True:
         break
 
     # Timer
-    if time.time() - start > 30:
+    if time.time() - start > 90:
         break
 
 cap.release()
