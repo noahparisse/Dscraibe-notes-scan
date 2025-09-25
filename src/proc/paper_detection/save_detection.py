@@ -3,6 +3,7 @@ import os
 import time
 import numpy as np
 from datetime import datetime
+from perspective_corrector import corrected_perspective
 
 # Réglages de sauvegarde
 OUT_DIR = "screenshots"
@@ -16,7 +17,7 @@ last_save_time = 0.0
 
 def save_detection(frame, quads):
     """
-    Sauvegarde le frame complet et un crop rectangulaire de la plus grande 'feuille'.
+    Sauvegarde le frame complet et celle dont la perspective a été modifiée
     - quads: liste de contours (4 points) renvoyés par la détection (approxPolyDP)
     """
     global last_save_time
@@ -37,21 +38,15 @@ def save_detection(frame, quads):
     # Choisir le plus grand quadrilatère
     areas = [cv2.contourArea(q) for q in quads]
     biggest = quads[int(np.argmax(areas))]
+    corners = biggest.reshape(4, 2).astype(np.float32)
 
-    # Recadrage rectangulaire simple
-    x, y, w, h = cv2.boundingRect(biggest)
+    # Correction de perspective
+    corrected = corrected_perspective(frame, corners,
+                                      output_width=800, output_height=600)
 
-    # Clamper aux bornes de l'image
-    H, W = frame.shape[:2]
-    x0 = max(0, x)
-    y0 = max(0, y)
-    x1 = min(W, x + w)
-    y1 = min(H, y + h)
-
-    if (x1 - x0) > 5 and (y1 - y0) > 5:  # éviter les crops minuscules
-        crop = frame[y0:y1, x0:x1].copy()
-        crop_path = os.path.join(OUT_DIR, f"paper_crop_{stamp}.jpg")
-        cv2.imwrite(crop_path, crop)
+    # Sauvegarde
+    corrected_path = os.path.join(OUT_DIR, f"paper_corrected_{stamp}.jpg")
+    cv2.imwrite(corrected_path, corrected)
+    print(f"[SAVE] {frame_path} (+ corrected perspective)")
 
     last_save_time = now
-    print(f"[SAVE] {frame_path} (+ crop rectangulaire)")

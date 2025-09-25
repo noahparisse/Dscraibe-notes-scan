@@ -1,23 +1,24 @@
 import cv2
-from image_preprocessing import processed_image
+from image_preprocessing import preprocessed_image
 
 # Détection des contours et filtrage des quadrilatères
 
 
 def shape_detector(img):
-    proc = processed_image(img)
-    # Détection des bords
+    proc = preprocessed_image(img)
+    # Binarisation pour trouver les contours
     edges = cv2.Canny(proc, 50, 150)
-    # Trouver des contours
+
+    # Extraction des contours
     contours, _ = cv2.findContours(
         edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
-    candidates = []
+    valid_shapes = []
     for cnt in contours:
         perimeter = cv2.arcLength(cnt, True)
         approx = cv2.approxPolyDP(cnt, 0.02 * perimeter, True)
 
         # On ne garde que les quadrilatères assez grands
         if len(approx) == 4 and cv2.contourArea(cnt) > 1000 and cv2.isContourConvex(approx):
-            candidates.append(approx)
-    return candidates
+            valid_shapes.append(approx)
+    return valid_shapes

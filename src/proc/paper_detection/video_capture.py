@@ -2,6 +2,7 @@ import cv2
 import time
 from shape_detector import shape_detector
 from save_detection import save_detection
+from image_preprocessing import preprocessed_image
 
 # Timer
 start = time.time()
@@ -13,7 +14,8 @@ cap = cv2.VideoCapture(0)
 while True:
     ret, img = cap.read()
     possible_papers = shape_detector(img)
-    img_show = img.copy()
+    # img_show = img.copy()
+    img_show = preprocessed_image(img)
 
     # Dessiner les contours sur l'image originale
     cv2.drawContours(img_show, possible_papers, -1, (0, 255, 0), 2)

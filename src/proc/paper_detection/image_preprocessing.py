@@ -1,24 +1,23 @@
 import cv2
 import numpy as np
 
-# Prétraitement de l'image pour faciliter la détection de contours
 
+def preprocessed_image(img):
+    '''
+    Prétraitement de l'image pour faciliter la détection de contours
+    '''
+    # Conversion en niveaux de gris
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-def processed_image(img):
-    # Masque pour isoler les zones blanches
-    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    lower_white = np.array([0, 0, 120])
-    upper_white = np.array([180, 80, 255])
-    mask = cv2.inRange(hsv, lower_white, upper_white)
+    # Amélioration du contraste
+    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+    gray = clahe.apply(gray)
 
-    # Appliquer le masque à l'image en niveaux de gris
-    gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    masked_gray = cv2.bitwise_and(gray_img, gray_img, mask=mask)
+    # Réduction du bruit avec préservation des bords
+    denoised = cv2.bilateralFilter(gray, 9, 75, 75)
 
-    # Améliorer le contraste
-    masked_gray = cv2.equalizeHist(masked_gray)
+    # Filtre morphologique: comble les trous et renforce les contours des zones blanches
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+    processed = cv2.morphologyEx(denoised, cv2.MORPH_CLOSE, kernel)
 
-    # Réduire le bruit avec un filtre bilatéral
-    blur = cv2.bilateralFilter(masked_gray, 9, 75, 75)
-
-    return blur
+    return processed
