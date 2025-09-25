@@ -43,7 +43,7 @@ def save_detection(frame, quads):
 
     # Correction de perspective
     corrected = corrected_perspective(frame, corners,
-                                      output_width=800, output_height=600)
+                                      output_width=2480, output_height=3508)
 
     # Postprocessing
     post_corrected = postprocessed_image(corrected)
