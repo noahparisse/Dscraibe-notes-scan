@@ -15,4 +15,6 @@ dependencies = [
     "paramiko>=4.0.0",
     "scp>=0.15.0",
     "openai-whisper",
+    "paramiko>=4.0.0",
+    "scp>=0.15.0",
 ]
