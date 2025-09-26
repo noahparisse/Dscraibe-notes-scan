@@ -16,9 +16,8 @@ client = Mistral(api_key=api_key)
 # Image Annotation response format
 class Document(BaseModel):
   image_type: str = Field(..., description="The type of the image in french.")
-  note_id: str = Field(..., description="The number of the note in french. Often written on the top right of the note.")
-  short_description: str = Field(..., description="A description in french describing the image.")
-  summary: str = Field(..., description="Summarize the image in french.")
+  transcription: str = Field(..., description="The full text transcription of the image in french.")
+  short_description: str = Field(..., description="A description in french describing the text on the image.")
   rappels: str = Field(..., description="Rappels importants à retenir de l'image en francais. En explicitant bien toutes les infos qu'on a sur chaque rappel.")
   incidents: str = Field(..., description="Incidents ou anomalies notés par l'utilisateur sur la feuille de l'image en francais.")
   call_recap: str = Field(..., description="Recapitulatif de l'appel en francais.")

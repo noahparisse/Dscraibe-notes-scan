@@ -80,6 +80,9 @@ try:
                     f"{RASPBERRY_USER}@{RASPBERRY_IP}:{REMOTE_OUTPUT_DIR}/{f}",
                     local_filepath
                 ])
+                subprocess.run([
+                    "ssh", f"{RASPBERRY_USER}@{RASPBERRY_IP}", f"rm -f {REMOTE_OUTPUT_DIR}/{f}"
+                ])
                 downloaded_files.add(f)
                 add_data2db(local_filepath)
                 print("Nouveau fichier chargé dans la BDD :",f)
