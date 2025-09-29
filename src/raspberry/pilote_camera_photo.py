@@ -11,9 +11,9 @@ from datetime import datetime
 # SAVE_DIR = "/home/projetrte/Documents/video_detection"
 # os.makedirs(SAVE_DIR, exist_ok=True)
 
-os.makedirs("./sampleH264", exist_ok=True)
-os.makedirs("./sampleMP4", exist_ok=True)
-os.makedirs("./photos", exist_ok=True)
+# os.makedirs("/home/projetrte/Documents/sampleH264", exist_ok=True)
+# os.makedirs("/home/projetrte/Documents/sampleMP4", exist_ok=True)
+os.makedirs("/home/projetrte/Documents/photos", exist_ok=True)
 
 # Initialisation de la caméra
 
@@ -54,17 +54,24 @@ interval = 4    # secondes
 encoder = H264Encoder(bitrate=10000000)
 i = 0
 
-# Capture des images
+# Fichier d'arrêt
+STOP_FILE = "/home/projetrte/Documents/stop.txt"
 
+# Capture des images
 try:
-    while time.time() - start < duration:
-        i+=1
+    while True :
+        # i+=1
         time.sleep(interval)
+
+        if os.path.exists(STOP_FILE):
+            print("Signal d'arrêt détecté")
+            break
 
         # Capture d'images
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"photo_{timestamp}.jpg"
+        filename = f"/home/projetrte/Documents/photos/photo_{timestamp}.jpg"
         picam2.capture_file(filename)
+        print("Nouvelle image capturée :", filename[33:])
 
         # Capture de vidéos
 
