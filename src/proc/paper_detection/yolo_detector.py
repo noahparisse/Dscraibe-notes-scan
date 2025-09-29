@@ -14,6 +14,5 @@ def look_at_picture(image_path):
     output = model(image_path)
     output[0].show()
 
-# look_at_picture('/Users/noahparisse/Downloads/Detection-de-feuilles/test/images/IMG_20240605_161026_jpg.rf.77f2974e94c90c24f55588abe32c7082.jpg')
-# look_at_picture('/Users/noahparisse/Downloads/Detection-de-feuilles/test/images/IMG_20250516_162655_jpg.rf.b194f5eced97f93797f65fac7b4be100.jpg')
-# look_at_picture('/Users/noahparisse/Downloads/Detection-de-feuilles/test/images/-_202505131939205_jpg.rf.93ba05c681c312d466d06c6e1f04ca87.jpg')
+# for f in os.listdir('/Users/noahparisse/Downloads/OneDrive_1_29-09-2025'):
+#     look_at_picture(os.path.join('/Users/noahparisse/Downloads/OneDrive_1_29-09-2025', f))
