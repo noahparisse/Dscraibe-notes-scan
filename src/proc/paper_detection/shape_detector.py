@@ -24,7 +24,7 @@ def shape_detector(img):
 
     for cnt in contours:
         perimeter = cv2.arcLength(cnt, True)
-        approx = cv2.approxPolyDP(cnt, 0.1 * perimeter, True)
+        approx = cv2.approxPolyDP(cnt, 0.02 * perimeter, True)
 
         # On ne garde que les quadrilatères assez grands
         if len(approx) == 4 and cv2.contourArea(cnt) > 0.05 * h * w and cv2.isContourConvex(approx):
