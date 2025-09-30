@@ -1,6 +1,7 @@
 import os
 import sqlite3
 import time
+import json
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 
@@ -24,8 +25,8 @@ def fetch_notes(limit: int = 50,
                 ts_to: Optional[int] = None,
                 q: str = "") -> List[Dict[str, Any]]:
     sql = """
-        SELECT id, ts, note_id, image_type, short_description, summary,
-               rappels, incidents, call_recap, additional_info, img_path_proc
+        SELECT id, ts, note_id, transcription_brute, transcription_clean, texte_ajoute,
+               img_path_proc, images
         FROM notes_meta
         WHERE 1=1
     """
@@ -38,9 +39,9 @@ def fetch_notes(limit: int = 50,
         params.append(ts_to)
     if q:
         # recherche simple sur quelques champs
-        sql += " AND (summary LIKE ? OR short_description LIKE ? OR incidents LIKE ? OR call_recap LIKE ?)"
+        sql += " AND (transcription_clean LIKE ? OR transcription_brute LIKE ? OR texte_ajoute LIKE ?)"
         like = f"%{q}%"
-        params += [like, like, like, like]
+        params += [like, like, like]
 
     sql += " ORDER BY ts DESC LIMIT ?"
     params.append(limit)
@@ -68,7 +69,7 @@ st.title(PAGE_TITLE)
 with st.sidebar:
     st.subheader("Filtres")
     limit = st.slider("Nombre de notes (max)", min_value=5, max_value=200, value=50, step=5)
-    q = st.text_input("Recherche texte (summary, incidents...)", value="")
+    q = st.text_input("Recherche texte (OCR, clean, ajouté)", value="")
     col1, col2 = st.columns(2)
     with col1:
         date_from = st.date_input("Depuis (date)", value=None)
@@ -103,9 +104,16 @@ for n in notes:
         if n.get("note_id"):
             st.caption(f"note_id: {n['note_id']}")
     with header_cols[1]:
-        st.markdown(f"**{n.get('short_description') or '(sans description)'}**")
-        if n.get("summary"):
-            st.write(n["summary"])
+        st.markdown("**Texte OCR brut**")
+        st.write(n.get("transcription_brute") or "—")
+        # st.markdown("**Texte OCR brut**")
+        # st.code(n.get("transcription_brute") or "—", language="text")
+        st.markdown("**Texte clean**")
+        st.write(n.get("transcription_clean") or "—")
+        st.markdown("**Texte ajouté**")
+        st.write(n.get("texte_ajoute") or "—")
+        # st.markdown("**Texte ajouté**")
+        # st.code(n.get("texte_ajoute") or "—", language="text")
     with header_cols[2]:
         img = safe_image(n.get("img_path_proc"))
         if img:
@@ -114,15 +122,19 @@ for n in notes:
             st.caption("Pas d'image disponible")
 
     # Détails en accordéon
-    with st.expander("Détails"):
-        left, right = st.columns(2)
-        with left:
-            st.markdown("**Rappels**")
-            st.write(n.get("rappels") or "—")
-            st.markdown("**Incidents**")
-            st.write(n.get("incidents") or "—")
-        with right:
-            st.markdown("**Compte-rendu d'appel**")
-            st.write(n.get("call_recap") or "—")
-            st.markdown("**Infos supplémentaires**")
-            st.write(n.get("additional_info") or "—")
+    with st.expander("Images extraites"):
+        images = []
+        try:
+            images = json.loads(n.get("images") or "[]")
+        except Exception:
+            images = []
+        for img_path in images:
+            img = safe_image(img_path)
+            if img:
+                st.image(img, caption=os.path.basename(img), use_column_width=True)
+            else:
+                st.caption(f"Image non disponible: {img_path}")
+
+    # Optionnel : afficher le JSON brut
+    # with st.expander("Raw JSON"):
+    #     st.code(n.get("raw_json") or "—", language=
