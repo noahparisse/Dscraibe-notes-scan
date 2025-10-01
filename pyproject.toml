@@ -21,4 +21,5 @@ dependencies = [
     "lap>=0.5.12",
     "pytubefix>=9.5.1",
     "scikit-image>=0.25.2",
+    "watchdog>=6.0.0",
 ]

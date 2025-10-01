@@ -105,15 +105,14 @@ for n in notes:
             st.caption(f"note_id: {n['note_id']}")
     with header_cols[1]:
         st.markdown("**Texte OCR brut**")
-        st.write(n.get("transcription_brute") or "—")
-        # st.markdown("**Texte OCR brut**")
-        # st.code(n.get("transcription_brute") or "—", language="text")
+        st.markdown(f"```\n{n.get('transcription_brute') or '—'}\n```")
+
         st.markdown("**Texte clean**")
-        st.write(n.get("transcription_clean") or "—")
+        st.markdown(f"```\n{n.get('transcription_clean') or '—'}\n```")
+
         st.markdown("**Texte ajouté**")
-        st.write(n.get("texte_ajoute") or "—")
-        # st.markdown("**Texte ajouté**")
-        # st.code(n.get("texte_ajoute") or "—", language="text")
+        st.markdown(f"```\n{n.get('texte_ajoute') or '—'}\n```")
+
     with header_cols[2]:
         img = safe_image(n.get("img_path_proc"))
         if img:
@@ -138,3 +137,11 @@ for n in notes:
     # Optionnel : afficher le JSON brut
     # with st.expander("Raw JSON"):
     #     st.code(n.get("raw_json") or "—", language=
+
+# --- Rafraîchissement automatique (Streamlit >=1.23)
+import time
+if REFRESH_SECONDS > 0:
+    time.sleep(REFRESH_SECONDS)
+    st.rerun()
+
+    # ...existing code d'affichage des notes...

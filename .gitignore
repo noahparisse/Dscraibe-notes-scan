@@ -211,11 +211,7 @@ __marimo__/
 
 
 # Bases de données locales
-data/db/*.sqlite
-
-# Images de test
-data/images/
-
+data/
 # Logs
 logs/
 
@@ -224,3 +220,5 @@ tmp/
 
 # Les poids du modèle YOLO
 src/proc/detection_model/
+
+data
