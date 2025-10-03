@@ -11,6 +11,7 @@ def laplacian_variance(img):
 
 # Cette fonction renvoie l'indice de l'image la moins floue de video en utilisant laplacian_variance
 def less_blurred(video):    # video = une liste d'images
+    
     best = 0
     best_value = laplacian_variance(video[0].orig_img)
     for i in range(1,len(video)):

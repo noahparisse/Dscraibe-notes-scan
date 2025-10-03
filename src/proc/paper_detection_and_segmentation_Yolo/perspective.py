@@ -1,10 +1,10 @@
 import cv2
 import numpy as np
 
-def warpPerspective(image_path):
+def Perspective(img, save_dir):
 
-    img = cv2.imread(image_path)
-
+    h, w = img.shape[:2]
+    
     edges = cv2.Canny(img, threshold1=100, threshold2=200)
 
    
@@ -47,5 +47,4 @@ def warpPerspective(image_path):
         M = cv2.getPerspectiveTransform(ordered_box, dst_pts)
         warped = cv2.warpPerspective(img, M, (w,h))
 
-        
-        cv2.imwrite("rectangle_redresse.jpg", warped)
+        cv2.imwrite(save_dir, warped)
