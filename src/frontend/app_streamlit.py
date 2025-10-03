@@ -1,8 +1,24 @@
 import os
 import sqlite3
 import time
+import json
 from datetime import datetime
 from typing import List, Dict, Any, Optional
+
+import sys
+import importlib.util
+
+db_path = os.path.join(os.path.dirname(__file__), "../backend/db.py")
+spec = importlib.util.spec_from_file_location("db", db_path)
+db = importlib.util.module_from_spec(spec)
+sys.modules["db"] = db
+spec.loader.exec_module(db)
+delete_entry_by_id = db.delete_entry_by_id
+delete_thread_by_note_id = db.delete_thread_by_note_id
+list_notes = db.list_notes
+list_notes_by_note_id = db.list_notes_by_note_id
+
+
 
 import streamlit as st
 
@@ -24,8 +40,8 @@ def fetch_notes(limit: int = 50,
                 ts_to: Optional[int] = None,
                 q: str = "") -> List[Dict[str, Any]]:
     sql = """
-        SELECT id, ts, note_id, image_type, short_description, summary,
-               rappels, incidents, call_recap, additional_info, img_path_proc
+        SELECT id, ts, note_id, transcription_brute, transcription_clean, texte_ajoute,
+               img_path_proc, images
         FROM notes_meta
         WHERE 1=1
     """
@@ -38,9 +54,9 @@ def fetch_notes(limit: int = 50,
         params.append(ts_to)
     if q:
         # recherche simple sur quelques champs
-        sql += " AND (summary LIKE ? OR short_description LIKE ? OR incidents LIKE ? OR call_recap LIKE ?)"
+        sql += " AND (transcription_clean LIKE ? OR transcription_brute LIKE ? OR texte_ajoute LIKE ?)"
         like = f"%{q}%"
-        params += [like, like, like, like]
+        params += [like, like, like]
 
     sql += " ORDER BY ts DESC LIMIT ?"
     params.append(limit)
@@ -68,7 +84,7 @@ st.title(PAGE_TITLE)
 with st.sidebar:
     st.subheader("Filtres")
     limit = st.slider("Nombre de notes (max)", min_value=5, max_value=200, value=50, step=5)
-    q = st.text_input("Recherche texte (summary, incidents...)", value="")
+    q = st.text_input("Recherche texte (OCR, clean, ajouté)", value="")
     col1, col2 = st.columns(2)
     with col1:
         date_from = st.date_input("Depuis (date)", value=None)
@@ -93,6 +109,19 @@ notes = fetch_notes(limit=limit, ts_from=ts_from, ts_to=ts_to, q=q)
 # Bandeau résumé
 st.markdown(f"**{len(notes)}** notes affichées")
 
+# Barre latérale (filtre)
+with st.sidebar:
+    st.header("Filtres")
+    all_notes = list_notes(limit=200)  # pour récupérer les derniers en base
+    note_ids = sorted({n["note_id"] for n in all_notes if n["note_id"]})
+    selected_note_id = st.selectbox("Filtrer par note_id", ["(toutes)"] + note_ids)
+
+# Chargement des notes selon le filtre
+if selected_note_id == "(toutes)":
+    notes = list_notes(limit=50)
+else:
+    notes = list_notes_by_note_id(selected_note_id, limit=50)
+
 # Affichage en cartes
 for n in notes:
     st.markdown("---")
@@ -103,9 +132,15 @@ for n in notes:
         if n.get("note_id"):
             st.caption(f"note_id: {n['note_id']}")
     with header_cols[1]:
-        st.markdown(f"**{n.get('short_description') or '(sans description)'}**")
-        if n.get("summary"):
-            st.write(n["summary"])
+        st.markdown("**Texte OCR brut**")
+        st.markdown(f"```\n{n.get('transcription_brute') or '—'}\n```")
+
+        st.markdown("**Texte clean**")
+        st.markdown(f"```\n{n.get('transcription_clean') or '—'}\n```")
+
+        st.markdown("**Texte ajouté**")
+        st.markdown(f"```\n{n.get('texte_ajoute') or '—'}\n```")
+
     with header_cols[2]:
         img = safe_image(n.get("img_path_proc"))
         if img:
@@ -114,15 +149,55 @@ for n in notes:
             st.caption("Pas d'image disponible")
 
     # Détails en accordéon
-    with st.expander("Détails"):
-        left, right = st.columns(2)
-        with left:
-            st.markdown("**Rappels**")
-            st.write(n.get("rappels") or "—")
-            st.markdown("**Incidents**")
-            st.write(n.get("incidents") or "—")
-        with right:
-            st.markdown("**Compte-rendu d'appel**")
-            st.write(n.get("call_recap") or "—")
-            st.markdown("**Infos supplémentaires**")
-            st.write(n.get("additional_info") or "—")
+    with st.expander("Images extraites"):
+        images = []
+        try:
+            images = json.loads(n.get("images") or "[]")
+        except Exception:
+            images = []
+        for img_path in images:
+            img = safe_image(img_path)
+            if img:
+                st.image(img, caption=os.path.basename(img), use_column_width=True)
+            else:
+                st.caption(f"Image non disponible: {img_path}")
+    
+    # ----- Actions -----
+    st.markdown("**Actions**")
+    a1, a2, a3 = st.columns([1,1,4])
+
+    # Suppression d'une entrée (ligne)
+    with a1:
+        with st.popover("🗑️ Supprimer cette entrée"):
+            st.caption("Supprime uniquement CETTE ligne (id). Opération irréversible.")
+            confirm1 = st.checkbox(f"Confirmer suppression id={n['id']}", key=f"del_id_ck_{n['id']}")
+            if st.button("Supprimer", key=f"del_id_btn_{n['id']}", disabled=not confirm1):
+                deleted = delete_entry_by_id(int(n["id"]), db_path=DB_PATH)
+                st.success(f"{deleted} entrée supprimée (id={n['id']}).")
+                st.rerun()
+
+    # Suppression de tout le fil (même note_id)
+    with a2:
+        disabled_thread = not n.get("note_id")
+        with st.popover("🗑️ Supprimer TOUTE la note_id", disabled=disabled_thread):
+            if disabled_thread:
+                st.caption("Pas de note_id pour cette entrée.")
+            else:
+                st.caption(f"Supprime toutes les entrées de note_id={n['note_id']}. Opération irréversible.")
+                confirm2 = st.checkbox(f"Confirmer suppression note_id={n['note_id']}", key=f"del_thread_ck_{n['id']}")
+                if st.button("Supprimer tout", key=f"del_thread_btn_{n['id']}", disabled=not confirm2):
+                    deleted = delete_thread_by_note_id(n["note_id"], db_path=DB_PATH)
+                    st.success(f"{deleted} entrées supprimées (note_id={n['note_id']}).")
+                    st.rerun()
+
+    # Optionnel : afficher le JSON brut
+    # with st.expander("Raw JSON"):
+    #     st.code(n.get("raw_json") or "—", language=
+
+# --- Rafraîchissement automatique (Streamlit >=1.23)
+import time
+if REFRESH_SECONDS > 0:
+    time.sleep(REFRESH_SECONDS)
+    st.rerun()
+
+    # ...existing code d'affichage des notes...

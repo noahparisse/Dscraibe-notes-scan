@@ -20,5 +20,8 @@ dependencies = [
     "ultralytics>=8.3.203",
     "lap>=0.5.12",
     "pytubefix>=9.5.1",
+    "scikit-image>=0.25.2",
+    "watchdog>=6.0.0",
+    "transformers>=4.56.2",
     "pot>=0.9.6.post1",
 ]

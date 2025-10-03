@@ -1,13 +1,23 @@
+from src.proc.paper_detection.perspective_corrector import corrected_perspective
+from src.add_data2db import add_data2db
 import cv2
 import os
 import time
 import numpy as np
 from datetime import datetime
-from perspective_corrector import corrected_perspective
-from image_postprocessing import postprocessed_image
+
+# Dossier dans lequel est situé le présent fichier
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# --- Hack pour corriger les imports ---
+import sys
+sys.path.append(os.path.abspath(os.path.join(
+    os.path.dirname(__file__), "../../..")))
+# maintenant Python "voit" le dossier src comme un package
+
 
 # Réglages de sauvegarde
-OUT_DIR = "src\proc\paper_detection\screenshots"
+OUT_DIR = os.path.join(BASE_DIR, "../../../tmp/paper")
 os.makedirs(OUT_DIR, exist_ok=True)
 
 # Cooldown
@@ -31,29 +41,27 @@ def save_detection(frame, quads):
     if now - last_save_time < COOLDOWN_SEC:
         return
 
-    # Horodatage
+    # Horodatage unique
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")[:-3]
+    prefix = f"detection_{stamp}"
 
     # Sauvegarde du frame complet
-    frame_path = os.path.join(OUT_DIR, f"frame_{stamp}.jpg")
-    cv2.imwrite(frame_path, frame)
+    # frame_path = os.path.join(OUT_DIR, f"{prefix}_frame.jpg")
+    # cv2.imwrite(frame_path, frame)
 
     # Sauvegarde de chaque quadrilatère
     for i, quad in enumerate(quads):
         corners = quad.reshape(4, 2).astype(np.float32)
+        corrected = corrected_perspective(frame, corners)
 
-        # Correction de perspective
-        corrected = corrected_perspective(frame, corners,
-                                          output_width=1240, output_height=1750)
-
-        # Postprocessing (il n'est plus utlisé)
-        # post_corrected = postprocessed_image(corrected)
-
-        # Sauvegarde
         corrected_path = os.path.join(
-            OUT_DIR, f"paper_corrected_{stamp}_q{i}.jpg")
+            OUT_DIR, f"{prefix}_q{i}.jpg"
+        )
         cv2.imwrite(corrected_path, corrected)
 
-    print(f"[SAVE] {frame_path} (+ {len(quads)} corrected perspectives)")
+        # Ajout en base
+        add_data2db(corrected_path)
+
+    # print(f"[SAVE] {frame_path} (+ {len(quads)} corrected perspectives)")
 
     last_save_time = now

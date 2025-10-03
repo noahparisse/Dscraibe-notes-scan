@@ -1,26 +1,27 @@
 import os, json, sqlite3, time
-from typing import Optional
-
+from typing import Optional, List, Dict, Tuple
+from difflib import SequenceMatcher
 
 DB_PATH = os.environ.get("RTE_DB_PATH", "data/db/notes.sqlite")
 
+def _resolve_db_path(db_path: Optional[str]) -> str:
+    return db_path or DB_PATH
+
 def ensure_db(db_path: str = DB_PATH):
+    db_path = _resolve_db_path(db_path)
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
     con = sqlite3.connect(db_path)
     con.execute("""
     CREATE TABLE IF NOT EXISTS notes_meta (
-      id               INTEGER PRIMARY KEY AUTOINCREMENT,
-      ts               INTEGER NOT NULL,
-      note_id          TEXT,
-      image_type       TEXT,
-      short_description TEXT,
-      summary          TEXT,
-      rappels          TEXT,
-      incidents        TEXT,
-      call_recap       TEXT,
-      additional_info  TEXT,
-      img_path_proc    TEXT,
-      raw_json         TEXT
+      id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+      ts                    INTEGER NOT NULL,
+      note_id               TEXT,
+      transcription_brute   TEXT,
+      transcription_clean   TEXT,
+      texte_ajoute          TEXT,
+      img_path_proc         TEXT,
+      images                TEXT,
+      raw_json              TEXT
     );
     """)
     con.execute("CREATE INDEX IF NOT EXISTS idx_notes_meta_ts ON notes_meta(ts);")
@@ -37,39 +38,308 @@ def insert_note_meta(meta: dict, img_path_proc: Optional[str] = None, db_path: s
     row = (
         now,
         meta.get("note_id"),
-        meta.get("image_type"),
-        meta.get("short_description"),
-        meta.get("summary"),
-        meta.get("rappels"),
-        meta.get("incidents"),
-        meta.get("call_recap"),
-        meta.get("additional_info"),
+        meta.get("transcription_brute"),
+        meta.get("transcription_clean"),
+        meta.get("texte_ajoute"),
         img_path_proc,
+        json.dumps(meta.get("images", []), ensure_ascii=False),
         json.dumps(meta, ensure_ascii=False)
     )
     con = sqlite3.connect(db_path)
     cur = con.cursor()
     cur.execute("""
         INSERT INTO notes_meta
-        (ts, note_id, image_type, short_description, summary, rappels, incidents, call_recap, additional_info, img_path_proc, raw_json)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (ts, note_id, transcription_brute, transcription_clean, texte_ajoute, img_path_proc, images, raw_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     """, row)
     con.commit()
     new_id = cur.lastrowid
     con.close()
     return new_id
 
-def list_notes(limit: int = 20, db_path: str = DB_PATH) -> list[dict]:
+def list_notes(limit: int = 20, db_path: str = DB_PATH) -> List[Dict]:
     ensure_db(db_path)
     con = sqlite3.connect(db_path)
     con.row_factory = sqlite3.Row
     cur = con.cursor()
     cur.execute("""
-        SELECT id, ts, note_id, image_type, short_description, summary, rappels, incidents, call_recap, additional_info, img_path_proc
+        SELECT id, ts, note_id, transcription_brute, transcription_clean, texte_ajoute, img_path_proc, images
         FROM notes_meta
         ORDER BY ts DESC
         LIMIT ?
     """, (limit,))
+    rows = [dict(r) for r in cur.fetchall()]
+    con.close()
+    return rows
+
+def get_last_note_text(db_path: str = DB_PATH) -> Tuple[Optional[str], Optional[int]]:
+    """
+    Récupère le texte nettoyé (transcription_clean) de la dernière note ajoutée en base.
+    """
+    ensure_db(db_path)
+    con = sqlite3.connect(db_path)
+    con.row_factory = sqlite3.Row
+    cur = con.cursor()
+    cur.execute("""
+        SELECT id, transcription_clean FROM notes_meta
+        ORDER BY ts DESC
+        LIMIT 1
+    """)
+    row = cur.fetchone()
+    con.close()
+    if row and row["transcription_clean"]:
+        return row["transcription_clean"], row["id"]
+    return None, None
+
+def is_same_note(clean_text: str, db_path: str = DB_PATH, threshold: float = 0.7) -> Optional[int]:
+    """
+    Compare le texte nettoyé fourni à celui de la dernière note en base.
+    Retourne l'id de la note si la similarité > seuil, sinon None.
+    """
+    ensure_db(db_path)
+    last_summary, last_id = get_last_note_text(db_path)
+    if last_summary is None:
+        return None
+    min_len = min(len(clean_text), len(last_summary))
+    a_trunc = clean_text[:min_len]
+    b_trunc = last_summary[:min_len]
+    ratio = SequenceMatcher(None, a_trunc, b_trunc).ratio()
+    if ratio >= threshold:
+        return last_id
+    return None
+
+def get_last_image_for_notes(db_path: str = DB_PATH) -> Dict[str, str]:
+    """
+    Retourne un dict {note_id: img_path_proc} pour la dernière image de chaque note_id.
+    """
+    ensure_db(db_path)
+    con = sqlite3.connect(db_path)
+    con.row_factory = sqlite3.Row
+    cur = con.cursor()
+    cur.execute("""
+        SELECT note_id, img_path_proc, MAX(ts) as ts
+        FROM notes_meta
+        WHERE note_id IS NOT NULL
+        GROUP BY note_id
+    """)
+    result = {}
+    for row in cur.fetchall():
+        if row["note_id"] and row["img_path_proc"]:
+            result[row["note_id"]] = row["img_path_proc"]
+    con.close()
+    return result
+
+def get_last_text_for_notes(db_path: str = DB_PATH) -> Dict[str, str]:
+    """
+    Retourne un dict {note_id: transcription_clean} pour le texte clean de la dernière note de chaque note_id.
+    """
+    ensure_db(db_path)
+    con = sqlite3.connect(db_path)
+    con.row_factory = sqlite3.Row
+    cur = con.cursor()
+    cur.execute("""
+        SELECT note_id, transcription_clean, MAX(ts) as ts
+        FROM notes_meta
+        WHERE note_id IS NOT NULL
+        GROUP BY note_id
+    """)
+    result = {}
+    for row in cur.fetchall():
+        if row["note_id"] and row["transcription_clean"]:
+            result[row["note_id"]] = row["transcription_clean"]
+    con.close()
+    return result
+
+def find_similar_note(clean_text: str, db_path: str = DB_PATH, threshold: float = 0.3) -> Optional[str]:
+    """
+    Compare le texte clean à toutes les dernières notes en base.
+    Retourne le note_id si la similarité > seuil, sinon None.
+    """
+    last_texts = get_last_text_for_notes(db_path)
+    for note_id, last_summary in last_texts.items():
+        min_len = min(len(clean_text), len(last_summary))
+        a_trunc = clean_text[:min_len]
+        b_trunc = last_summary[:min_len]
+        ratio = SequenceMatcher(None, a_trunc, b_trunc).ratio()
+        if ratio >= threshold:
+            return note_id
+    return None
+
+def compute_diff(old_text: str,
+                 new_text: str,
+                 minor_change_threshold: float = 0.90) -> Tuple[str, List[Dict]]:
+    """
+    Renvoie (human_str, diff_json)
+    - human_str : lignes ajoutées / modifiées / supprimées en monospace (avec n° de ligne)
+    - diff_json : liste d'opérations {type, line, content}
+      type ∈ {"insert","replace","delete"}
+      line = numéro de ligne dans le NOUVEAU texte (1-based) pour insert/replace,
+             numéro de ligne dans l'ANCIEN pour delete (clé 'old_line')
+    Règles :
+      - insert : on liste toujours
+      - replace : seulement si différence significative (ratio < minor_change_threshold)
+      - delete : on liste (journalisation)
+    """
+    old_lines = old_text.splitlines()
+    new_lines = new_text.splitlines()
+
+    sm = SequenceMatcher(None, old_lines, new_lines, autojunk=False)
+
+    human_rows: List[str] = []
+    diff_json: List[Dict] = []
+
+    for tag, i1, i2, j1, j2 in sm.get_opcodes():
+        if tag == "equal":
+            continue
+
+        if tag == "insert":
+            # Nouvelles lignes dans new[j1:j2]
+            for offset, ln in enumerate(new_lines[j1:j2], start=j1):
+                if ln.strip():
+                    human_rows.append(f"+ Ligne {offset+1}. {ln}")
+                    diff_json.append({
+                        "type": "insert",
+                        "line": offset + 1,
+                        "content": ln
+                    })
+
+        elif tag == "replace":
+            old_block = old_lines[i1:i2]
+            new_block = new_lines[j1:j2]
+
+            if len(old_block) == len(new_block):
+                # comparaison 1-1
+                for offset, (a, b) in enumerate(zip(old_block, new_block), start=j1):
+                    if not b.strip():
+                        continue
+                    ratio = SequenceMatcher(None, a, b).ratio()
+                    if ratio < minor_change_threshold:
+                        human_rows.append(f"~ Ligne {offset+1}. {b}")
+                        diff_json.append({
+                            "type": "replace",
+                            "line": offset + 1,
+                            "old_content": a,
+                            "content": b,
+                            "similarity": float(ratio)
+                        })
+            else:
+                # tailles différentes : tout le bloc nouveau est considéré comme insert,
+                # et l'ancien comme delete
+                for offset, b in enumerate(new_block, start=j1):
+                    if b.strip():
+                        human_rows.append(f"+ Ligne {offset+1}. {b}")
+                        diff_json.append({
+                            "type": "insert",
+                            "line": offset + 1,
+                            "content": b
+                        })
+                for offset, a in enumerate(old_block, start=i1):
+                    if a.strip():
+                        human_rows.append(f"- Ancienne ligne {offset+1}. {a}")
+                        diff_json.append({
+                            "type": "delete",
+                            "old_line": offset + 1,
+                            "old_content": a
+                        })
+
+        elif tag == "delete":
+            # Lignes supprimées dans old[i1:i2]
+            for offset, a in enumerate(old_lines[i1:i2], start=i1):
+                if a.strip():
+                    human_rows.append(f"- Ancienne ligne {offset+1}. {a}")
+                    diff_json.append({
+                        "type": "delete",
+                        "old_line": offset + 1,
+                        "old_content": a
+                    })
+
+    human_str = "\n".join(human_rows)
+    return human_str, diff_json
+
+
+def get_added_text(old_text: str,
+                   new_text: str,
+                   minor_change_threshold: float = 0.90) -> str:
+    """
+    Back-compat : ne renvoie que la version humaine (monospace) des changements.
+    """
+    human, _ = compute_diff(old_text, new_text, minor_change_threshold=minor_change_threshold)
+    return human
+
+
+def get_last_note_meta(db_path: str = DB_PATH) -> Optional[Dict]:
+    """
+    Retourne le dernier enregistrement complet de notes_meta.
+    """
+    ensure_db(db_path)
+    con = sqlite3.connect(db_path)
+    con.row_factory = sqlite3.Row
+    cur = con.cursor()
+    cur.execute("""
+        SELECT * FROM notes_meta
+        ORDER BY ts DESC
+        LIMIT 1
+    """)
+    row = cur.fetchone()
+    con.close()
+    if row:
+        return dict(row)
+    return None
+    
+def clear_notes_meta(db_path: str = DB_PATH):
+    """
+    Supprime toutes les lignes de la table notes_meta et réinitialise l'AUTOINCREMENT.
+    """
+    ensure_db(db_path)
+    con = sqlite3.connect(db_path)
+    cur = con.cursor()
+    cur.execute("DELETE FROM notes_meta;")
+    # Réinitialise l'AUTOINCREMENT
+    cur.execute("DELETE FROM sqlite_sequence WHERE name='notes_meta';")
+    con.commit()
+    con.close()
+    print(f"La base de données '{db_path}' a été vidée (notes_meta clear, AUTOINCREMENT reset).")
+
+
+def delete_entry_by_id(entry_id: int, db_path: str = DB_PATH) -> int:
+    """Supprime UNE entrée (ligne) par id. Retourne le nb de lignes supprimées (0 ou 1)."""
+    ensure_db(db_path)
+    con = sqlite3.connect(db_path)
+    cur = con.cursor()
+    cur.execute("DELETE FROM notes_meta WHERE id = ?", (entry_id,))
+    deleted = cur.rowcount
+    con.commit()
+    con.close()
+    return deleted
+
+def delete_thread_by_note_id(note_id: str, db_path: str = DB_PATH) -> int:
+    """Supprime TOUTES les entrées liées à un note_id. Retourne le nb de lignes supprimées."""
+    ensure_db(db_path)
+    con = sqlite3.connect(db_path)
+    cur = con.cursor()
+    cur.execute("DELETE FROM notes_meta WHERE note_id = ?", (note_id,))
+    deleted = cur.rowcount
+    con.commit()
+    con.close()
+    return deleted
+
+
+def list_notes_by_note_id(note_id: str, db_path: str = DB_PATH, limit: int = 50) -> List[Dict]:
+    """
+    Retourne toutes les entrées associées à un note_id donné, 
+    triées par timestamp descendant.
+    """
+    ensure_db(db_path)
+    con = sqlite3.connect(db_path)
+    con.row_factory = sqlite3.Row
+    cur = con.cursor()
+    cur.execute("""
+        SELECT id, ts, note_id, transcription_brute, transcription_clean, texte_ajoute, img_path_proc, images
+        FROM notes_meta
+        WHERE note_id = ?
+        ORDER BY ts DESC
+        LIMIT ?
+    """, (note_id, limit))
     rows = [dict(r) for r in cur.fetchall()]
     con.close()
     return rows
