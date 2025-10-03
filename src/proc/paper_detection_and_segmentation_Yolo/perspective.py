@@ -10,7 +10,6 @@ def Perspective(img, save_dir):
    
     contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    
     max_area = 0
     best_box = None
 

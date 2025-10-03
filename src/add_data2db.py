@@ -93,4 +93,4 @@ def add_data2db(image_path: str, db_path: str = DB_PATH):
     print(f"Note insérée (note_id {note_id}, meta_id {meta_id})")
     return meta_id
 
-
+add_data2db("C:\DTY\RTE\detection-notes\data\images\\raw\Attachment0.jpg")
