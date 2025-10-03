@@ -1,28 +1,34 @@
 import json
 import uuid
 
-from capture.encode_image import encode_image
-from recog.mistral_ocr_llm import image_transcription
-from recog.cleaning_llm import cleaning
-from backend.db import (
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from src.backend.db import (
     DB_PATH,
     insert_note_meta,
     get_last_text_for_notes,
     find_similar_note,
-    compute_diff,         
+    compute_diff,   
 )
+from src.recog.mistral_ocr_llm import image_transcription  
 
+def _has_meaningful_line(s: str) -> bool:
+    import re
+    for ln in (s or "").splitlines():
+        if re.search(r"[A-Za-zÀ-ÿ0-9]", ln):
+            return True
+    return False
 
-import json
-import uuid
-from backend.db import (
-    DB_PATH,
-    insert_note_meta,
-    get_last_text_for_notes,
-    find_similar_note,
-    compute_diff,   # <- assure-toi qu’elle est bien importée / définie
-)
-from recog.mistral_ocr_llm import image_transcription  # <-- nouvelle import
+import re
+
+def _has_meaningful_text(s: str) -> bool:
+    if not s or not s.strip():
+        return False
+    # au moins un mot >= 2 lettres OU un chiffre
+    return bool(re.search(r"[A-Za-zÀ-ÿ]{2,}", s) or re.search(r"\d", s))
+
 
 def add_data2db(image_path: str, db_path: str = DB_PATH):
     """
@@ -41,11 +47,12 @@ def add_data2db(image_path: str, db_path: str = DB_PATH):
     # 1) OCR + normalisation
     ocr_text, cleaned_text = image_transcription(image_path)
 
-    if not cleaned_text.strip() or cleaned_text.strip() in {".", "-", "_"}:
-        print(f"Aucun texte détecté dans {image_path}. Ignoré.")
+    if not cleaned_text or not cleaned_text.strip():
+        print(f"[SKIP] Aucun texte exploitable après normalisation pour {image_path}")
         return None
 
     # 2) Cherche une note existante similaire
+    
     similar_note_id = find_similar_note(cleaned_text, db_path=db_path, threshold=0.7)
 
     diff_human = ""
@@ -59,6 +66,14 @@ def add_data2db(image_path: str, db_path: str = DB_PATH):
 
         if not diff_human.strip():
             print(f"Aucune vraie nouveauté pour la note {similar_note_id}. Ignorée.")
+            return None
+        
+        if not _has_meaningful_line(diff_human):
+            print(f"[SKIP] Diff sans contenu utile pour note {similar_note_id}")
+            return None
+        
+        if not _has_meaningful_text(cleaned_text):
+            print(f"[SKIP] Aucun texte exploitable (anti-bruit) pour {image_path}")
             return None
 
         note_id = similar_note_id

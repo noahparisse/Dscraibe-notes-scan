@@ -17,8 +17,8 @@ def encode_image(path: str) -> str:
 # --- Pré-process : collapse des lignes de continuation ---
 def pre_collapse_continuations(text: str) -> str:
     """
-    Concatène à la ligne précédente les lignes de continuation
-    (↳, >, indentation, puces).
+    Détecte les lignes de continuation (↳, >, indentation, puces)
+    et les concatène à la ligne précédente.
     """
     lines = []
     for line in text.splitlines():
@@ -34,21 +34,61 @@ def pre_collapse_continuations(text: str) -> str:
             lines.append(stripped)
     return "\n".join(lines)
 
+
 # --- Post-process : normalisations déterministes ---
 def postprocess_normalized(text: str) -> str:
-    # Normalisation espaces
+    import re
+
+    # 0) Nettoyages durs de balises ou code fences
+    text = text.replace("```", "")
+    text = text.replace("<<<", "").replace(">>>", "")
+
+    # 1) Normalisation espaces globaux
     text = re.sub(r"[ \t]+", " ", text)
-    # Heures : "16 h" → "16h"
-    text = re.sub(r"(\d{1,2}) ?h", r"\1h", text)
-    # Numéros de téléphone : supprime espaces
-    text = re.sub(r"\b0\d(?:\s?\d{2}){4}\b", lambda m: m.group(0).replace(" ", ""), text)
-    # Normalisation kV (RV → kV si contexte tension)
-    text = re.sub(r"(\d+)(?:RV|rv)", r"\1kV", text)
-    # Supprime lignes vides
-    text = "\n".join(l.strip() for l in text.splitlines() if l.strip())
-    # Retire "None" éventuel
-    text = text.replace("None", "").strip()
-    return text
+
+    # 2) Split lignes + filtres
+    lines = []
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+
+        # a) supprimer les explications style "(Aucune information exploitable ...)"
+        if re.fullmatch(r"[\*\(_\s]*[A-Za-zÀ-ÿ].*\)[\*\)_\s]*", line):
+            if "information exploitable" in line.lower() or "retour vide" in line.lower():
+                continue
+
+        # b) ignorer les lignes vides sémantiquement
+        if not re.search(r"[A-Za-zÀ-ÿ0-9]", line):
+            continue
+
+        # c) normalisations déterministes utiles
+        line = re.sub(r"\b(\d{1,2})\s*h\b", r"\1h", line)             # 16 h -> 16h
+        line = re.sub(r"\b(\d+)\s*RV\b", r"\1kV", line)               # 20RV -> 20kV
+        line = re.sub(r"\b0\d(?:\s?\d{2}){4}\b",
+                      lambda m: m.group(0).replace(" ", ""), line)    # 07 66 .. -> 0766..
+
+        lines.append(line)
+
+    # 3) Supprimer les lignes “admin” et bruit numérique court
+    final = []
+    for line in lines:
+        if re.fullmatch(r"(?i)\s*vote(\s+\d+)?\s*", line):
+            continue
+        if re.fullmatch(r"(?i)\s*note(\s+\d+)?\s*", line):
+            continue
+        if re.fullmatch(r"\d{1,3}", line):
+            continue
+        if line.lower() == "none":
+            continue
+        final.append(line)
+
+    # 4) Join + trim
+    out = "\n".join(final).strip()
+    return out
+
+
+
 
 # --- Fonction principale ---
 def image_transcription(image_path: str) -> str:
@@ -160,16 +200,18 @@ def image_transcription(image_path: str) -> str:
     Problème DIFFB sur TR 3
     SMACC déclenché hier soir
 
-    RÉPONSE FINALE
-    Renvoie uniquement le texte final, au même ordre, sans lignes vides, sans “None”.
-    Contenu à traiter :
-    <<<
-    {ocr_text}
-    >>>
+    RÉPONSE FINALE (obligatoire)
+- Si l'entrée ne contient aucune information exploitable (par exemple, juste un point ".") : renvoie une CHAÎNE VIDE (exactement "").
+- Sinon, renvoie UNIQUEMENT le texte final normalisé, sans balises, sans ``` et sans commentaires.
+Contenu à traiter :
+<<<
+{ocr_text}
+>>>
     """
     response = client.chat.complete(
         model="mistral-large-latest",
-        messages=[{"role": "user", "content": prompt}]
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.0
     )
     clean_text = response.choices[0].message.content.strip()
 

@@ -23,7 +23,7 @@ video = []
 
 # Lancement de la webcam
 try :
-    for result in model.predict(source = 1, show = True, conf = 0.8, verbose = False, stream = True):
+    for result in model.predict(source = 0, show = True, conf = 0.8, verbose = False, stream = True):
         boxes = result.boxes
         if boxes and len(boxes)>0:      # Si un objet (une feuille de papier) est détectée sur la frame
             if len(video)==0:       # Si aucun objet n'était en cours de capture

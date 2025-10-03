@@ -8,7 +8,7 @@ from image_preprocessing import preprocessed_image
 start = time.time()
 
 # Choix de la caméra
-cap = cv2.VideoCapture(1)
+cap = cv2.VideoCapture(0)
 
 # Lancement de la webcam
 while True:
@@ -39,9 +39,9 @@ while True:
     if cv2.waitKey(1) == ord('q'):
         break
 
-    # Timer
-    if time.time() - start > 90:
-        break
+    # # Timer
+    # if time.time() - start > 180:
+    #     break
 
 cap.release()
 cv2.destroyAllWindows()

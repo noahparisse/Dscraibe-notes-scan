@@ -5,6 +5,21 @@ import json
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 
+import sys
+import importlib.util
+
+db_path = os.path.join(os.path.dirname(__file__), "../backend/db.py")
+spec = importlib.util.spec_from_file_location("db", db_path)
+db = importlib.util.module_from_spec(spec)
+sys.modules["db"] = db
+spec.loader.exec_module(db)
+delete_entry_by_id = db.delete_entry_by_id
+delete_thread_by_note_id = db.delete_thread_by_note_id
+list_notes = db.list_notes
+list_notes_by_note_id = db.list_notes_by_note_id
+
+
+
 import streamlit as st
 
 ### Pour lancer le front : streamlit run src/frontend/app_streamlit.py
@@ -94,6 +109,19 @@ notes = fetch_notes(limit=limit, ts_from=ts_from, ts_to=ts_to, q=q)
 # Bandeau résumé
 st.markdown(f"**{len(notes)}** notes affichées")
 
+# Barre latérale (filtre)
+with st.sidebar:
+    st.header("Filtres")
+    all_notes = list_notes(limit=200)  # pour récupérer les derniers en base
+    note_ids = sorted({n["note_id"] for n in all_notes if n["note_id"]})
+    selected_note_id = st.selectbox("Filtrer par note_id", ["(toutes)"] + note_ids)
+
+# Chargement des notes selon le filtre
+if selected_note_id == "(toutes)":
+    notes = list_notes(limit=50)
+else:
+    notes = list_notes_by_note_id(selected_note_id, limit=50)
+
 # Affichage en cartes
 for n in notes:
     st.markdown("---")
@@ -133,6 +161,34 @@ for n in notes:
                 st.image(img, caption=os.path.basename(img), use_column_width=True)
             else:
                 st.caption(f"Image non disponible: {img_path}")
+    
+    # ----- Actions -----
+    st.markdown("**Actions**")
+    a1, a2, a3 = st.columns([1,1,4])
+
+    # Suppression d'une entrée (ligne)
+    with a1:
+        with st.popover("🗑️ Supprimer cette entrée"):
+            st.caption("Supprime uniquement CETTE ligne (id). Opération irréversible.")
+            confirm1 = st.checkbox(f"Confirmer suppression id={n['id']}", key=f"del_id_ck_{n['id']}")
+            if st.button("Supprimer", key=f"del_id_btn_{n['id']}", disabled=not confirm1):
+                deleted = delete_entry_by_id(int(n["id"]), db_path=DB_PATH)
+                st.success(f"{deleted} entrée supprimée (id={n['id']}).")
+                st.rerun()
+
+    # Suppression de tout le fil (même note_id)
+    with a2:
+        disabled_thread = not n.get("note_id")
+        with st.popover("🗑️ Supprimer TOUTE la note_id", disabled=disabled_thread):
+            if disabled_thread:
+                st.caption("Pas de note_id pour cette entrée.")
+            else:
+                st.caption(f"Supprime toutes les entrées de note_id={n['note_id']}. Opération irréversible.")
+                confirm2 = st.checkbox(f"Confirmer suppression note_id={n['note_id']}", key=f"del_thread_ck_{n['id']}")
+                if st.button("Supprimer tout", key=f"del_thread_btn_{n['id']}", disabled=not confirm2):
+                    deleted = delete_thread_by_note_id(n["note_id"], db_path=DB_PATH)
+                    st.success(f"{deleted} entrées supprimées (note_id={n['note_id']}).")
+                    st.rerun()
 
     # Optionnel : afficher le JSON brut
     # with st.expander("Raw JSON"):

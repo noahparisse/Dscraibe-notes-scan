@@ -150,7 +150,7 @@ def get_last_text_for_notes(db_path: str = DB_PATH) -> Dict[str, str]:
     con.close()
     return result
 
-def find_similar_note(clean_text: str, db_path: str = DB_PATH, threshold: float = 0.7) -> Optional[str]:
+def find_similar_note(clean_text: str, db_path: str = DB_PATH, threshold: float = 0.3) -> Optional[str]:
     """
     Compare le texte clean à toutes les dernières notes en base.
     Retourne le note_id si la similarité > seuil, sinon None.
@@ -299,3 +299,47 @@ def clear_notes_meta(db_path: str = DB_PATH):
     con.commit()
     con.close()
     print(f"La base de données '{db_path}' a été vidée (notes_meta clear, AUTOINCREMENT reset).")
+
+
+def delete_entry_by_id(entry_id: int, db_path: str = DB_PATH) -> int:
+    """Supprime UNE entrée (ligne) par id. Retourne le nb de lignes supprimées (0 ou 1)."""
+    ensure_db(db_path)
+    con = sqlite3.connect(db_path)
+    cur = con.cursor()
+    cur.execute("DELETE FROM notes_meta WHERE id = ?", (entry_id,))
+    deleted = cur.rowcount
+    con.commit()
+    con.close()
+    return deleted
+
+def delete_thread_by_note_id(note_id: str, db_path: str = DB_PATH) -> int:
+    """Supprime TOUTES les entrées liées à un note_id. Retourne le nb de lignes supprimées."""
+    ensure_db(db_path)
+    con = sqlite3.connect(db_path)
+    cur = con.cursor()
+    cur.execute("DELETE FROM notes_meta WHERE note_id = ?", (note_id,))
+    deleted = cur.rowcount
+    con.commit()
+    con.close()
+    return deleted
+
+
+def list_notes_by_note_id(note_id: str, db_path: str = DB_PATH, limit: int = 50) -> List[Dict]:
+    """
+    Retourne toutes les entrées associées à un note_id donné, 
+    triées par timestamp descendant.
+    """
+    ensure_db(db_path)
+    con = sqlite3.connect(db_path)
+    con.row_factory = sqlite3.Row
+    cur = con.cursor()
+    cur.execute("""
+        SELECT id, ts, note_id, transcription_brute, transcription_clean, texte_ajoute, img_path_proc, images
+        FROM notes_meta
+        WHERE note_id = ?
+        ORDER BY ts DESC
+        LIMIT ?
+    """, (note_id, limit))
+    rows = [dict(r) for r in cur.fetchall()]
+    con.close()
+    return rows

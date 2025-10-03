@@ -56,4 +56,4 @@ def watch_dir(directory: str):
     observer.join()
 
 if __name__ == "__main__":
-    watch_dir("data/images/raw")  # adapte si besoin
+    watch_dir("/Users/tomamirault/Documents/projects/p1-dty-rte/detection-notes/tmp/paper")  # adapte si besoin
