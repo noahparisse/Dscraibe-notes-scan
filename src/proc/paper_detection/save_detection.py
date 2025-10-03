@@ -1,3 +1,5 @@
+from src.proc.paper_detection.perspective_corrector import corrected_perspective
+from src.add_data2db import add_data2db
 import cv2
 import os
 import time
@@ -7,15 +9,9 @@ from datetime import datetime
 
 # --- Hack pour corriger les imports ---
 import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..")))
+sys.path.append(os.path.abspath(os.path.join(
+    os.path.dirname(__file__), "../../..")))
 # maintenant Python "voit" le dossier src comme un package
-
-from src.add_data2db import add_data2db
-
-from src.proc.paper_detection.perspective_corrector import corrected_perspective
-
-
-
 
 
 # Réglages de sauvegarde
@@ -23,7 +19,7 @@ OUT_DIR = "/Users/tomamirault/Documents/projects/p1-dty-rte/detection-notes/tmp/
 os.makedirs(OUT_DIR, exist_ok=True)
 
 # Cooldown
-COOLDOWN_SEC = 10.0   # délai mini entre deux sauvegardes (évite les doublons)
+COOLDOWN_SEC = 5.0   # délai mini entre deux sauvegardes (évite les doublons)
 
 last_save_time = 0.0
 
@@ -64,6 +60,6 @@ def save_detection(frame, quads):
         # Ajout en base
         add_data2db(corrected_path)
 
-    #print(f"[SAVE] {frame_path} (+ {len(quads)} corrected perspectives)")
+    # print(f"[SAVE] {frame_path} (+ {len(quads)} corrected perspectives)")
 
     last_save_time = now
