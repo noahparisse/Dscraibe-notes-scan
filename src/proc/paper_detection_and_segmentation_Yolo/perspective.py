@@ -2,7 +2,24 @@ import cv2
 import numpy as np
 
 def Perspective(img, save_path):
+    """
+    Détecte le plus grand contour rectangulaire (par ex. une feuille de papier),
+    corrige la perspective et sauvegarde l'image redressée.
 
+    Étapes :
+        1. Applique la détection de contours avec Canny.
+        2. Recherche le plus grand rectangle via cv2.minAreaRect().
+        3. Dessine le contour détecté (en vert).
+        4. Effectue une transformation de perspective pour redresser l'objet.
+        5. Sauvegarde l'image corrigée.
+
+    Args:
+        img (np.ndarray): Image d'entrée (BGR ou niveaux de gris).
+        save_path (str): Chemin de sauvegarde du fichier redressé.
+
+    Returns:
+        None
+    """
     h, w = img.shape[:2]
     
     edges = cv2.Canny(img, threshold1=100, threshold2=200)

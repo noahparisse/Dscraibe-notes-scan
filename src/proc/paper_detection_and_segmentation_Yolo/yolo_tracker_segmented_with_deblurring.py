@@ -1,110 +1,86 @@
-# Ce fichier, une fois exécuté, capte en continu le flux de la webcam de l'ordinateur, et, dès que le
-# modèle YOLO détecte une feuille de papier, il enregistre les 20 frames suivantes, pour sélectionner
-# la frame la moins floue et l'enregistrer, ainsi que sa version rognée autour de la bounding box.
-import cv2
+"""
+Ce script utilise un modèle YOLOv8 (finetuné sur un dataset de détection de feuilles de papier) 
+pour capturer en continu le flux de la webcam. 
+
+Fonctionnement :
+    1. YOLO détecte une feuille de papier en temps réel.
+    2. Dès la première détection, le script enregistre les 20 frames suivantes.
+    3. Parmi ces frames, la moins floue est sélectionnée grâce à `less_blurred`.
+    4. La frame sélectionnée est sauvegardée, avec sa version rognée/rectifiée via `save_masked_image`.
+    5. Le chemin de l’image sauvegardée est inséré dans la base de données via `add_data2db`.
+
+Arrêt du programme :
+    - Ctrl+C (KeyboardInterrupt)
+"""
+
+import os
+import sys
 import time
-import numpy as np
 from datetime import datetime
 from ultralytics import YOLO
-import os
-from blurry_detection import less_blurred
-from perspective import Perspective
+from save_image import save_masked_image
 
-
-import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..")))
+sys.path.append(
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
+)
 from src.add_data2db import add_data2db
+from proc.paper_detection.blurry_detection import less_blurred
 
+
+
+# --- Configuration ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Modèle YOLOv8 finetuné sur le dataset https://app.roboflow.com/dty-opi9m/detection-de-feuilles-245oo/1/export
-model_path = os.path.join(BASE_DIR, '../detection_model/Yolo-seg.pt')
-model = YOLO(model_path)
+# Modèle YOLOv8 finetuné sur dataset RoboFlow
+MODEL_PATH = os.path.join(BASE_DIR, "../detection_model/Yolo-seg.pt")
+model = YOLO(MODEL_PATH)
 
-# Timer
+# Timer (pour gérer les délais entre captures)
 start = time.time()
 checkpoint = start
 
-# Initialisation des outils de capture des objets
+# Liste temporaire pour stocker les frames détectées
 video = []
 
 
-def save_masked_image(result, save_dir, stamp):
-    orig = result.orig_img
-    h, w = orig.shape[:2]
-
-    if result.masks is not None and len(result.masks.data) > 0:
-        for j, m in enumerate(result.masks.data.cpu().numpy()):
-            # Redimensionner le masque
-            m_resized = cv2.resize(m, (w, h), interpolation=cv2.INTER_NEAREST)
-            m_resized = (m_resized > 0.5).astype(np.uint8) * 255
-
-            # Appliquer le masque
-            masked = cv2.bitwise_and(orig, orig, mask=m_resized)
-
-            # Recadrer autour du masque
-            coords = cv2.findNonZero(m_resized)
-            if coords is not None:
-                x, y, bw, bh = cv2.boundingRect(coords)
-
-                # Appliquer un dézoom de zoom_out (% du rectangle)
-                margin_w = int(bw * 0.1)
-                margin_h = int(bh * 0.1)
-
-                x = max(0, x - margin_w)
-                y = max(0, y - margin_h)
-                bw = min(w - x, bw + 2 * margin_w)
-                bh = min(h - y, bh + 2 * margin_h)
-                
-                cropped = masked[y:y+bh, x:x+bw]
-            else:
-                cropped = masked
-
-            filename_masked = os.path.join(save_dir, f"object_{stamp}_{j}.jpg")
-            Perspective(cropped, filename_masked)
-            return filename_masked
-            
-            
-
-            
-# Lancement de la webcam
-try :
-    for result in model.predict(source = 0, show = True, conf = 0.8, verbose = False, stream = True):
+# --- Boucle principale ---
+try:
+    for result in model.predict(source=0, show=True, conf=0.8, verbose=False, stream=True):
         boxes = result.boxes
-        if boxes and len(boxes)>0:      # Si un objet (une feuille de papier) est détectée sur la frame
-            if len(video)==0:       # Si aucun objet n'était en cours de capture
-                if time.time()-checkpoint>1:
+
+        if boxes and len(boxes) > 0:
+            # Un objet (feuille) est détecté
+            if len(video) == 0:  # Début d'une séquence
+                if time.time() - checkpoint > 1:  # Attente d’1s entre deux captures
                     checkpoint = time.time()
                     video.append(result)
-            elif len(video)<20: # Si un objet est en cours de capture
+
+            elif len(video) < 20:  # Capture en cours
                 video.append(result)
-            elif len(video)==20:    # Si on a fini de capturer l'objet
-                best = less_blurred(video)  # Indice de la frame la moins floue
+
+            elif len(video) == 20:  # Séquence terminée
+                best = less_blurred(video)  # Sélection de la frame la plus nette
                 stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
 
-                filename_frame = os.path.join(BASE_DIR, "../../../tmp", f"photo_{stamp}.jpg")
-                save_dir_object = os.path.join(BASE_DIR, "../../../tmp")
-                
-                # Sauvegarde masques (au lieu des boxes)
-                final_filename = save_masked_image(video[best], save_dir_object, stamp)
-                add_data2db(final_filename)  
+                save_dir = os.path.join(BASE_DIR, "../../../tmp")
+                final_filename = save_masked_image(video[best], save_dir, stamp)
 
-                video = []      # On réinitialise la sous-vidéo capturée
-                
-        elif len(video)>0:  # Si l'objet a disparu avant la fin de la capture des 20 frames
-            best = less_blurred(video)  # Indice de la frame la moins floue
+                add_data2db(final_filename)  # Sauvegarde dans la base
+                video = []  # Réinitialisation
+
+        elif len(video) > 0:
+            # L’objet a disparu avant la fin des 20 frames
+            best = less_blurred(video)
             stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
 
-            filename_frame = os.path.join(BASE_DIR, "../../../tmp", f"photo_{stamp}.jpg")
-            save_dir_object = os.path.join(BASE_DIR, "../../../tmp")
-            
-            final_filename = save_masked_image(video[best], save_dir_object, stamp)      
-            
-            print(f"Photo sauvegardée: {final_filename}")
-            add_data2db(final_filename)                       # On enregistre la frame avec la bounding box tracée
-            
-            video = []      # On réinitialise la sous-vidéo capturée
-except KeyboardInterrupt :
+            save_dir = os.path.join(BASE_DIR, "../../../tmp")
+            final_filename = save_masked_image(video[best], save_dir, stamp)
+
+            add_data2db(final_filename)
+
+            video = []  # Réinitialisation
+
+except KeyboardInterrupt:
     print("Arrêt demandé par l'utilisateur.")
-finally :
+finally:
     print("Fin.")
