@@ -11,7 +11,7 @@ Le projet combine :
 - Visualisation et recherche via une interface Streamlit
 
 ## Architecture du projet
-'''
+'''text
 detection-notes/
   src/
     add_data2db.py
