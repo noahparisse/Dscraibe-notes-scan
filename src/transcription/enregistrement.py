@@ -7,6 +7,34 @@ import os
 
 
 def record_loop(duration=10, bruit_reduction=True):
+    """
+    Enregistre des segments audio en boucle et les sauvegarde dans un dossier temporaire.
+
+    À chaque itération, cette fonction :
+      - démarre un enregistrement audio d'une durée donnée ;
+      - applique éventuellement une réduction de bruit ;
+      - enregistre le fichier .wav dans un dossier `tmp` avec un nom horodaté ;
+      - consigne l'heure de début et de fin dans un fichier `transcriptions_log.txt`.
+
+    L'enregistrement s'interrompt manuellement avec `Ctrl+C`.
+
+    Parameters
+    ----------
+    duration : int or float, optional (default=10)
+        Durée (en secondes) de chaque segment audio enregistré.
+    bruit_reduction : bool, optional (default=True)
+        Si True, applique une réduction de bruit à l’aide de la fonction 
+        `noisereduce.reduce_noise`.
+
+    Outputs
+    -------
+    - Aucun retour direct (None).
+    - Effets de bord :
+        * Crée un dossier `tmp/` s’il n’existe pas déjà.
+        * Enregistre les fichiers audio nommés `record_chunk_<n>_<timestamp>.wav`.
+        * Écrit dans `tmp/transcriptions_log.txt` les intervalles temporels
+          correspondant à chaque enregistrement.
+    """
     os.makedirs("tmp", exist_ok=True)
     log_path = os.path.join("tmp", "transcriptions_log.txt")
     try:
