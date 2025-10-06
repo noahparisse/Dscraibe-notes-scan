@@ -7,7 +7,40 @@ import numpy as np
 
 
 def diarization_with_whisper(audio_path, n_clusters=2, model_size="tiny", prompt=""):
+    """
+    Effectue une diarisation basique (segmentation par locuteur) à partir d'un fichier audio
+    en utilisant le modèle Whisper pour la transcription et des embeddings audio pour le clustering.
+
+    Cette fonction :
+      1. Transcrit l’audio avec Whisper pour obtenir les segments de parole.
+      2. Extrait les embeddings audio de chaque segment à partir du modèle Whisper.
+      3. Applique un clustering K-Means pour regrouper les segments selon leur similarité vocale.
     
+    L’objectif est d’obtenir une estimation des différents locuteurs dans le fichier audio.
+
+    Parameters
+    ----------
+    audio_path : str
+        Chemin du fichier audio à traiter (par ex. "tmp/ia_podcast.wav").
+    n_clusters : int, optional (default=2)
+        Nombre de locuteurs présumés (clusters K-Means).
+    model_size : str, optional (default="tiny")
+        Taille du modèle Whisper à utiliser.  
+        Options : "tiny", "base", "small", "medium", "large".
+    prompt : str, optional (default="")
+        Texte de contexte initial pour améliorer la transcription (prompt initial).
+
+    Returns
+    -------
+    list_start : list of float
+        Liste des temps de début (en secondes) de chaque segment.
+    list_end : list of float
+        Liste des temps de fin (en secondes) de chaque segment.
+    list_text : list of str
+        Liste des transcriptions correspondantes à chaque segment.
+    labels : ndarray of int
+        Tableau contenant les étiquettes de cluster (locuteur estimé) pour chaque segment.
+    """
     model = whisper.load_model(model_size)  
 
     audio, sr = librosa.load(audio_path, sr=16000)
