@@ -10,8 +10,8 @@ from blurry_detection import less_blurred
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Modèle YOLOv11 finetuné sur le dataset https://app.roboflow.com/dty-opi9m/detection-de-feuilles-245oo/1/export
-model_path = os.path.join(BASE_DIR, '../detection_model/best.pt')
+# Modèle YOLOv11 finetuné sur le dataset https://universe.roboflow.com/dty-opi9m/detection-de-feuilles-245oo
+model_path = os.path.join(BASE_DIR, '../detection_model/best-detect.pt')
 model = YOLO(model_path)
 
 # Timer
@@ -39,7 +39,8 @@ try :
                 filename_frame = os.path.join(BASE_DIR, "../../../tmp", f"photo_{stamp}.jpg")
                 save_dir_object = os.path.join(BASE_DIR, "../../../tmp")
                 video[best].save_crop(save_dir_object, file_name = f"object_{stamp}.jpg")    # On enregistre la bounding box en tant qu'image
-                cv2.imwrite(filename_frame, video[best].plot())                              # On enregistre la frame avec la bounding box tracée
+                video[best].save_txt(os.path.join(save_dir_object, f"output_{stamp}.txt"))
+                cv2.imwrite(filename_frame, video[best].orig_img)                              # On enregistre la frame avec la bounding box tracée
                 
                 video = []      # On réinitialise la sous-vidéo capturée
                 
@@ -50,7 +51,8 @@ try :
             filename_frame = os.path.join(BASE_DIR, "../../../tmp", f"photo_{stamp}.jpg")
             save_dir_object = os.path.join(BASE_DIR, "../../../tmp")
             video[best].save_crop(save_dir_object, file_name = f"object_{stamp}.jpg")    # On enregistre la bounding box en tant qu'image
-            cv2.imwrite(filename_frame, video[best].plot())                              # On enregistre la frame avec la bounding box tracée
+            video[best].save_txt(os.path.join(save_dir_object, f"output_{stamp}.txt"))
+            cv2.imwrite(filename_frame, video[best].orig_img)                              # On enregistre la frame avec la bounding box tracée
             
             video = []      # On réinitialise la sous-vidéo capturée
 except KeyboardInterrupt :
