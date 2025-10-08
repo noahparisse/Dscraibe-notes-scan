@@ -29,4 +29,7 @@ dependencies = [
     "gradio>=5.48.0",
     "sounddevice>=0.5.2",
     "soundfile>=0.13.1",
+    "seqeval>=1.2.2",
+    "torch>=2.8.0",
+    "pyzbar>=0.1.9",
 ]

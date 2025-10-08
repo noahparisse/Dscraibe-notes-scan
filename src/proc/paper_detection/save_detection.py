@@ -1,3 +1,4 @@
+import sys
 from src.proc.paper_detection.perspective_corrector import corrected_perspective
 from src.add_data2db import add_data2db
 import cv2
@@ -10,7 +11,6 @@ from datetime import datetime
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # --- Hack pour corriger les imports ---
-import sys
 sys.path.append(os.path.abspath(os.path.join(
     os.path.dirname(__file__), "../../..")))
 # maintenant Python "voit" le dossier src comme un package
