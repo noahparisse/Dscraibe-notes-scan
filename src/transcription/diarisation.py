@@ -64,12 +64,12 @@ def diarization_with_whisper(audio_path, n_clusters=2, model_size="tiny", prompt
         
         list_text.append(segment["text"])
 
-        # Transformer en tensor et normaliser
+   
         audio_segment = torch.from_numpy(audio_segment).float()
-        audio_segment = whisper.pad_or_trim(audio_segment)  # ajuste si trop court ou long
+        audio_segment = whisper.pad_or_trim(audio_segment)  
 
 
-        audio_segment = audio_segment.unsqueeze(0)  # ajouter la dimension batch
+        audio_segment = audio_segment.unsqueeze(0) 
         with torch.no_grad():
             mel = whisper.log_mel_spectrogram(audio_segment)
             embeddings = model.encoder(mel)

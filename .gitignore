@@ -247,3 +247,4 @@ src/ner/db.conll
 # Lbakali:  Tests
 
 test_MLB/
+voice_assistant/
