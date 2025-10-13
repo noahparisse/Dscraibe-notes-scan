@@ -44,9 +44,12 @@ try :
                 # cv2.imwrite(filename_frame, video[best].orig_img)                              # On enregistre la frame avec la bounding box tracée
                 
                 x, y, w, h = video[best].boxes.xywh[0]
+                # print("x, y, w, h :", x, y, w, h)
                 box_x_left = int(x-0.5*w)
                 box_y_top = int(y-0.5*h)
                 rect = (box_x_left, box_y_top, int(w), int(h))
+                # print("rect :", rect)
+                # print("shape :", result.orig_img.shape)
 
                 processed = crop_image_around_object(video[best].orig_img, rect)
                 filename_frame = os.path.join(BASE_DIR, "../../../tmp/paper", f"paper_{stamp}.jpg")

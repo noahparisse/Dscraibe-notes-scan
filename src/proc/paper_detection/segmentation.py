@@ -1,18 +1,31 @@
+'''Ce script définit toutes les fonctions nécessaires à la segmentation de l'image entre la feuille de papier détectée
+l'arrière-plan.'''
 import numpy as np
 import cv2
 from matplotlib import pyplot as plt
 import os
 from perspective_corrector import corrected_perspective
+from datetime import datetime
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
-def get_mask(img, rect):
+
+def get_mask(img : np.ndarray, rect : tuple) -> np.ndarray :
+    """_summary_
+
+    Args:
+        img (np.ndarray): frame captée par la caméra
+        rect (tuple): tuple représentant la bounding box de la feuille au format (x_left, y_top, width, height)
+
+    Returns:
+        np.ndarray: masque binaire de la taille de l'image, démarquant la feuille de l'arrière-plan
+    """     
     mask = np.zeros(img.shape[:2],np.uint8)
     bgdModel = np.zeros((1,65),np.float64)
     fgdModel = np.zeros((1,65),np.float64)
-    cv2.grabCut(img, mask, rect, bgdModel, fgdModel, 1, cv2.GC_INIT_WITH_RECT)
+    cv2.grabCut(img, mask, rect, bgdModel, fgdModel, 5, cv2.GC_INIT_WITH_RECT)
 
-    # # Raffinage en rensignant les pixels du centr de l'image comme appartanant pour sûr à l'objet
+    # # Raffinage en renseignant les pixels du centre de l'image comme appartanant pour sûr à l'objet
     # height, width = img.shape[:2]
     # center_x = int(width / 2)
     # center_y = int(height / 2)
@@ -26,11 +39,29 @@ def get_mask(img, rect):
     return mask2
 
 
-def crop_image_around_object(img, rect):
+def crop_image_around_object(img:np.ndarray, rect:tuple) -> np.ndarray:
+    """crop_image_around_object fait tourner l'algorithme grabCut sur l'image et rogne ensuite l'image autour de la feuille,
+    en redressant la feuille à la verticale.
+
+    Args:
+        img (np.ndarray): frame captée par la caméra
+        rect (tuple): tuple représentant la bounding box de l'objet au format (x_left, y_top, width, height)
+
+    Returns:
+        np.ndarray: l'image rognée autour de la feuille
+    """    
     x, y, w, h = rect
     roi = img[y:y+h, x:x+w]
+    # stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    # cv2.imwrite(f"/Users/noahparisse/Documents/Paris-digital-lab/P1 RTE/detection-notes/tmp/paper/roi_{stamp}.jpg", roi)
     rect = (1,1,w-2,h-2)
-    mask = get_mask(img, rect)
+    mask = get_mask(roi, rect)
+
+    # mask_color = np.zeros_like(roi)
+    # mask_color[mask>0]=np.array([0, 0, 255])
+    # overlay = np.zeros_like(roi)
+    # overlay = cv2.addWeighted(roi, 1.0, mask_color, 0.5, 0, overlay)
+    # cv2.imwrite(f"/Users/noahparisse/Documents/Paris-digital-lab/P1 RTE/detection-notes/tmp/paper/overlay_{stamp}.jpg", overlay)
 
     # mask : tableau 2D numpy avec 0=background, 1=objet
     points = np.column_stack(np.where(mask > 0))  # shape = (N, 2), (y, x)
@@ -40,8 +71,12 @@ def crop_image_around_object(img, rect):
     # rect = ((center_x, center_y), (width, height), angle)
 
     box = cv2.boxPoints(rect)   # renvoie 4 points float (x, y)
+    box = np.int32(box)
+    # roiplusrect = roi.copy()
+    # cv2.drawContours(roiplusrect,[box],0,(0,0,255),2)
+    # cv2.imwrite(f"/Users/noahparisse/Documents/Paris-digital-lab/P1 RTE/detection-notes/tmp/paper/rect_{stamp}.jpg", roiplusrect)
 
-    return corrected_perspective(img, box)
+    return corrected_perspective(roi, box)
 
     # hull = cv2.convexHull(points[:, ::-1])  # inverser (y,x) → (x,y)
     # epsilon = 0.02 * cv2.arcLength(hull, True)  # tolérance d’approximation
