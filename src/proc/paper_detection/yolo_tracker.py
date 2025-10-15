@@ -8,7 +8,7 @@ from ultralytics import YOLO
 import os
 from blurry_detection import less_blurred
 # from segmentation import crop_image_around_object
-from segmentation_threshold import crop_image_around_object
+from segmentation_threshold import crop_image_around_object, get_binary_image_of_text
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -52,8 +52,11 @@ try :
                 # print("shape :", result.orig_img.shape)
 
                 processed = crop_image_around_object(video[best].orig_img, rect)
+                thresholded = get_binary_image_of_text(video[best].orig_img, rect)
                 filename_frame = os.path.join(BASE_DIR, "../../../tmp/paper", f"paper_{stamp}.jpg")
-                cv2.imwrite(filename_frame, processed) 
+                filename_frame2 = os.path.join(BASE_DIR, "../../../tmp/paper", f"paper_processed_{stamp}.jpg")
+                cv2.imwrite(filename_frame2, processed)   
+                cv2.imwrite(filename_frame, thresholded) 
 
                 video = []      # On réinitialise la sous-vidéo capturée
                 
@@ -62,6 +65,7 @@ try :
             stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
 
             filename_frame = os.path.join(BASE_DIR, "../../../tmp/paper", f"paper_{stamp}.jpg")
+            filename_frame2 = os.path.join(BASE_DIR, "../../../tmp/paper", f"paper_processed_{stamp}.jpg")
             # save_dir_object = os.path.join(BASE_DIR, "../../../tmp")
             # video[best].save_crop(save_dir_object, file_name = f"object_{stamp}.jpg")    # On enregistre la bounding box en tant qu'image
             # video[best].save_txt(os.path.join(save_dir_object, f"output_{stamp}.txt"))
@@ -71,7 +75,9 @@ try :
             rect = (box_x_left, box_y_top, int(w), int(h))
 
             processed = crop_image_around_object(video[best].orig_img, rect)
-            cv2.imwrite(filename_frame, processed)                              # On enregistre la frame avec la bounding box tracée
+            thresholded = get_binary_image_of_text(video[best].orig_img, rect)
+            cv2.imwrite(filename_frame2, processed)   
+            cv2.imwrite(filename_frame, thresholded)                              # On enregistre la frame avec la bounding box tracée
             
             video = []      # On réinitialise la sous-vidéo capturée
 except KeyboardInterrupt :

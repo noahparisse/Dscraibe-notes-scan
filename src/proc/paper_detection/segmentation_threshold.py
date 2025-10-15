@@ -4,17 +4,65 @@ import numpy as np
 import cv2
 from matplotlib import pyplot as plt
 import os
-from perspective_corrector import corrected_perspective
 from datetime import datetime
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+
+def order_corners(corners):
+    """
+    Trie les 4 coins dans l'ordre : haut-gauche, haut-droit, bas-droit, bas-gauche
+    """
+    rect = np.zeros((4, 2), dtype=np.float32)
+
+    s = corners.sum(axis=1)
+    rect[0] = corners[np.argmin(s)]
+    rect[2] = corners[np.argmax(s)]
+
+    diff = np.diff(corners, axis=1)
+    rect[1] = corners[np.argmin(diff)]
+    rect[3] = corners[np.argmax(diff)]
+
+    return rect
+
+
+def get_output_size(corners):
+    # distances horizontales
+    width_top = np.linalg.norm(corners[0] - corners[1])
+    width_bottom = np.linalg.norm(corners[2] - corners[3])
+    max_width = int(max(width_top, width_bottom))
+
+    # distances verticales
+    height_left = np.linalg.norm(corners[0] - corners[3])
+    height_right = np.linalg.norm(corners[1] - corners[2])
+    max_height = int(max(height_left, height_right))
+
+    return max_width, max_height
+
+
+def corrected_perspective(img, corners):
+    '''
+    Applique une correction de perspective pour redresser la feuille, en ajoutant un fond blanc lorsqu'il rajoute du fond
+    '''
+    # Rectangle parfait de destination
+    corners = order_corners(corners)
+    output_width, output_height = get_output_size(corners)
+    dst_points = np.array([[0, 0], [output_width - 1, 0],
+                          [output_width - 1, output_height - 1], [0, output_height - 1]], dtype=np.float32)
+
+    # Calculer la matrice de transformation de perspective
+    matrix = cv2.getPerspectiveTransform(corners, dst_points)
+
+    # Appliquer la transformation
+    corrected = cv2.warpPerspective(
+        img, matrix, (output_width, output_height), flags=cv2.INTER_LANCZOS4, borderMode=cv2.BORDER_CONSTANT, borderValue=(255, 255, 255))
+    return corrected
 
 
 def get_mask(img : np.ndarray) -> np.ndarray :  
     img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     _, mask = cv2.threshold(img_gray, 100, 255, type = cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     # Meilleur enchainement : morph_close suivi de morph_open
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (21,21))
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5,5))
     mask1 = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
     mask1 = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
 
@@ -49,17 +97,15 @@ def get_extreme_points(mask):
 def test_segmentation(img : np.ndarray) -> np.ndarray :  
     img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     _, mask = cv2.threshold(img_gray, 100, 255, type = cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    fig, axes = plt.subplots(3, 4, figsize=(10, 10))
+    fig, axes = plt.subplots(3, 4, figsize=(8, 8))
     axes[0, 0].imshow(img_gray, cmap = 'gray')
     axes[0, 0].set_title("Img_gray")
     axes[0, 1].imshow(mask, cmap = 'gray')
     axes[0, 1].set_title("Seuillé")
     # Meilleur enchainement : morph_close suivi de morph_open
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (21,21))
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5,5))
     mask1 = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
     mask1 = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-    axes[0, 2].imshow(mask1, cmap = 'gray')
-    axes[0, 2].set_title("morph_close suivi de morph_open")
     # kernel2 = cv2.getStructuringElement(cv2.MORPH_RECT, (5,5))
     # mask2 = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel2)
     # mask2 = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel2)
@@ -72,46 +118,67 @@ def test_segmentation(img : np.ndarray) -> np.ndarray :
         largest_label = 0
     largest_mask = np.zeros_like(mask, dtype=np.uint8)
     largest_mask[labels == largest_label] = 255
-    axes[0, 3].imshow(largest_mask, cmap = 'gray')
-    axes[0, 3].set_title("plus grande CC du mask")
+    axes[0, 2].imshow(largest_mask, cmap = 'gray')
+    axes[0, 2].set_title("largest_mask")
     masked_image = img.copy()
     masked_image[largest_mask==0]=[255, 255, 255]
-    axes[1, 0].imshow(masked_image)
-    axes[1, 0].set_title("Image masquée")
+    axes[0, 3].imshow(masked_image)
+    axes[0, 3].set_title("Image masquée")
 
     # On fait tourner minAreaRect pour pouvoir croper
     points = np.column_stack(np.where(largest_mask > 0))
-    rect = cv2.minAreaRect(points[:, ::-1]) # inverser y, x → x, y
+    rect = cv2.minAreaRect(points[:, ::-1])
     box = cv2.boxPoints(rect)
     box = np.int32(box)
     mask_rect = largest_mask.copy()
     mask_rect = cv2.cvtColor(mask_rect, cv2.COLOR_GRAY2RGB)
     cv2.drawContours(mask_rect,[box],0,(255,0,0),2)
-    axes[1, 1].imshow(mask_rect)
-    axes[1, 1].set_title("rectangle sur mask")
+    axes[1, 0].imshow(mask_rect)
+    axes[1, 0].set_title("rectangle sur mask")
     img_rect = img.copy()
     img_rect = cv2.cvtColor(img_rect, cv2.COLOR_BGR2RGB)
     cv2.drawContours(img_rect,[box],0,(255,0,0),2)
-    axes[1, 2].imshow(img_rect)
-    axes[1, 2].set_title("rectangle")
+    axes[1, 1].imshow(img_rect)
+    axes[1, 1].set_title("rectangle")
 
     # On utilise le rectangle pour croper et remettre vertical
     corrected_image = corrected_perspective(img, box)
-    axes[1, 3].imshow(corrected_image)
-    axes[1, 3].set_title("Image corrigée")
+    axes[1, 2].imshow(corrected_image)
+    axes[1, 2].set_title("Image corrigée")
     masked_corrected_img = corrected_perspective(masked_image, box)
-    axes[2, 0].imshow(masked_corrected_img)
-    axes[2, 0].set_title("Image masquée et corrigée")
+    axes[1, 3].imshow(masked_corrected_img)
+    axes[1, 3].set_title("Image masquée et corrigée")
 
-    # On va chercher les 4 points extrêmes du masque pour affiner l'application de corrected_perspective.
-    corrected_mask = corrected_perspective(largest_mask, box)
-    extreme_points = get_extreme_points(corrected_mask)
-    print("longueur de extreme_points :", len(extreme_points))
-    image_with_extreme_points = corrected_image.copy()
-    for point in extreme_points:
-        cv2.circle(image_with_extreme_points, point, radius=5, color=(0, 0, 255), thickness=-1)
-    axes[2, 1].imshow(image_with_extreme_points)
-    axes[2, 1].set_title("Image corrigée avec les points extrêmes du masque")
+    # On trouve le plus grand contour et on le remplit, pour éviter de perdre les écritures noires à l'intérieur de la feuille
+    contours, _ = cv2.findContours(largest_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    print("Nombre de contours détectés :", len(contours))
+    if contours:
+        largest_contour = max(contours, key=cv2.contourArea)
+        # if (largest_contour[0]!=largest_contour[-1]).any():
+        #     largest_contour[-1]=largest_contour[0]
+        #     print("On a du reboucler le contour.")
+    else:
+        largest_contour = None
+    if not largest_contour is None :
+        contour_mask = np.zeros(img.shape[:2], dtype=np.uint8)
+        cv2.fillPoly(contour_mask, [largest_contour], 255)
+        img_dot_mask = np.where(contour_mask[..., None] == 255, img, 255)
+        axes[2, 0].imshow(img_dot_mask)
+        axes[2, 0].set_title("Image avec contour_mask appliqué")
+
+    # On utilise le nouveau corrected_perspective (défini dans ce script) pour que ça rajoute du blanc pour ce qui est
+    # hors-champ
+    corrected_image_dot_mask = corrected_perspective(img_dot_mask, box)
+    axes[2, 1].imshow(corrected_image_dot_mask)
+    axes[2, 1].set_title("Image dot mask corrigée")
+
+    gray = cv2.cvtColor(corrected_image_dot_mask, cv2.COLOR_BGR2GRAY)
+    axes[2, 2].imshow(gray, cmap='gray')
+    axes[2, 2].set_title("niveaux de gris avant seuillage final")
+    retval, thresh_image = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY)
+    axes[2, 3].imshow(thresh_image, cmap='gray', interpolation='None')
+    axes[2, 3].set_title("résultat final")
+    print(thresh_image)
 
 
     plt.show()
@@ -131,65 +198,47 @@ def crop_image_around_object(img:np.ndarray, rect:tuple) -> np.ndarray:
     """    
     x, y, w, h = rect
     roi = img[y:y+h, x:x+w]
-    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    cv2.imwrite(f"/Users/noahparisse/Documents/Paris-digital-lab/P1 RTE/detection-notes/tmp/paper/roi_{stamp}.jpg", roi)
+    # stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    # cv2.imwrite(f"/Users/noahparisse/Documents/Paris-digital-lab/P1 RTE/detection-notes/tmp/paper/roi_{stamp}.jpg", roi)
     rect = (1,1,w-2,h-2)
     mask = get_mask(roi)
 
-    mask_color = np.zeros_like(roi)
-    mask_color[mask>0]=np.array([0, 0, 255])
-    overlay = np.zeros_like(roi)
-    overlay = cv2.addWeighted(roi, 1.0, mask_color, 0.5, 0, overlay)
-    cv2.imwrite(f"/Users/noahparisse/Documents/Paris-digital-lab/P1 RTE/detection-notes/tmp/paper/overlay_{stamp}.jpg", overlay)
+    # mask_color = np.zeros_like(roi)
+    # mask_color[mask>0]=np.array([0, 0, 255])
+    # overlay = np.zeros_like(roi)
+    # overlay = cv2.addWeighted(roi, 1.0, mask_color, 0.5, 0, overlay)
+    # cv2.imwrite(f"/Users/noahparisse/Documents/Paris-digital-lab/P1 RTE/detection-notes/tmp/paper/overlay_{stamp}.jpg", overlay)
 
     points = np.column_stack(np.where(mask > 0))
     rect = cv2.minAreaRect(points[:, ::-1])
     box = cv2.boxPoints(rect)
     box = np.int32(box)
-    mask_rect = mask.copy()
-    mask_rect = cv2.cvtColor(mask_rect, cv2.COLOR_GRAY2RGB)
-    cv2.drawContours(mask_rect,[box],0,(255,0,0),2)
-    img_rect = img.copy()
-    img_rect = cv2.cvtColor(img_rect, cv2.COLOR_BGR2RGB)
-    cv2.drawContours(img_rect,[box],0,(255,0,0),2)
-    return corrected_perspective(roi, box)
+    # mask_rect = mask.copy()
+    # mask_rect = cv2.cvtColor(mask_rect, cv2.COLOR_GRAY2RGB)
+    # cv2.drawContours(mask_rect,[box],0,(255,0,0),2)
+    # img_rect = img.copy()
+    # img_rect = cv2.cvtColor(img_rect, cv2.COLOR_BGR2RGB)
+    # cv2.drawContours(img_rect,[box],0,(255,0,0),2)
 
-    # hull = cv2.convexHull(points[:, ::-1])  # inverser (y,x) → (x,y)
-    # epsilon = 0.02 * cv2.arcLength(hull, True)  # tolérance d’approximation
-    # approx = cv2.approxPolyDP(hull, epsilon, True)
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if contours:
+        largest_contour = max(contours, key=cv2.contourArea)
+    else:
+        largest_contour = None
+    if not largest_contour is None :
+        contour_mask = np.zeros(roi.shape[:2], dtype=np.uint8)
+        cv2.fillPoly(contour_mask, [largest_contour], 255)
+        roi_dot_mask = np.where(contour_mask[..., None] == 255, roi, 255)
+    
+    corrected_image_dot_mask = corrected_perspective(roi_dot_mask, box)
 
-    # epsilon_add = 0.02*cv2.arcLength(hull, True)
-    # max_iter = 10
-    # i = 1
-    # while len(approx) != 4 and i<max_iter:
+    return corrected_image_dot_mask
 
-    #     if len(approx>4):
-    #         epsilon += epsilon_add
-    #         epsilon_add *= 9/10
-    #         approx = cv2.approxPolyDP(hull, epsilon, True)
-    #     if len(approx<4):
-    #         epsilon -= epsilon_add
-    #         epsilon_add *= 9/10
-    #         approx = cv2.approxPolyDP(hull, epsilon, True)
-    #     i+=1
-    # if len(approx)!=4:
-    #     print("Erreur : l'objet n'a pas d'approximation quadrilatérale.")
-    #     return img
-
-    # img_copy = img.copy()
-
-    # cv2.polylines(img_copy, [quadri_points.astype(np.int32)], True, (0, 0, 255), 2)
-
-    # cv2.imshow("Quadrilatère", img_copy)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
-
-    # box = np.int32(box)          # convertir en int pour tracer
-
-    # # img_copy = img.copy()
-    # # cv2.drawContours(img_copy, [box], 0, (0, 0, 255), thickness = 2)  # rouge, épaisseur 2
-    # # cv2.imshow("Résultat", img_copy)
-    # # cv2.waitKey(0)
+def get_binary_image_of_text(img:np.ndarray, rect:tuple) -> np.ndarray:
+    corrected_masked_image = crop_image_around_object(img, rect)
+    gray = cv2.cvtColor(corrected_masked_image, cv2.COLOR_BGR2GRAY)
+    _, thresh_image = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY)
+    return thresh_image
 
 if __name__ == "__main__":
     tmp_dir = os.path.join(BASE_DIR, "../../../tmp/")
@@ -199,8 +248,9 @@ if __name__ == "__main__":
         if f.endswith(".jpg"):
             print("L'image traitée est :", f)
             img = cv2.imread(os.path.join(tmp_dir, f))
+            h,w = img.shape[:2]
         
-            mask = test_segmentation(img)
+            corrected = test_segmentation(img)
             # cv2.imshow("PErspectivé", corrected)
             # cv2.waitKey(0)
             # cv2.destroyAllWindows()
