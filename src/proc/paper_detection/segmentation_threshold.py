@@ -122,32 +122,27 @@ def test_segmentation(img : np.ndarray) -> np.ndarray :
     axes[0, 2].set_title("largest_mask")
     masked_image = img.copy()
     masked_image[largest_mask==0]=[255, 255, 255]
-    axes[0, 3].imshow(masked_image)
-    axes[0, 3].set_title("Image masquée")
+    # axes[0, 3].imshow(masked_image)
+    # axes[0, 3].set_title("Image masquée")
 
     # On fait tourner minAreaRect pour pouvoir croper
     points = np.column_stack(np.where(largest_mask > 0))
     rect = cv2.minAreaRect(points[:, ::-1])
     box = cv2.boxPoints(rect)
     box = np.int32(box)
-    mask_rect = largest_mask.copy()
-    mask_rect = cv2.cvtColor(mask_rect, cv2.COLOR_GRAY2RGB)
-    cv2.drawContours(mask_rect,[box],0,(255,0,0),2)
-    axes[1, 0].imshow(mask_rect)
-    axes[1, 0].set_title("rectangle sur mask")
     img_rect = img.copy()
     img_rect = cv2.cvtColor(img_rect, cv2.COLOR_BGR2RGB)
     cv2.drawContours(img_rect,[box],0,(255,0,0),2)
-    axes[1, 1].imshow(img_rect)
-    axes[1, 1].set_title("rectangle")
+    axes[0, 3].imshow(img_rect)
+    axes[0, 3].set_title("rectangle")
 
     # On utilise le rectangle pour croper et remettre vertical
     corrected_image = corrected_perspective(img, box)
-    axes[1, 2].imshow(corrected_image)
-    axes[1, 2].set_title("Image corrigée")
+    axes[1, 0].imshow(corrected_image)
+    axes[1, 0].set_title("Image corrigée")
     masked_corrected_img = corrected_perspective(masked_image, box)
-    axes[1, 3].imshow(masked_corrected_img)
-    axes[1, 3].set_title("Image masquée et corrigée")
+    axes[1, 1].imshow(masked_corrected_img)
+    axes[1, 1].set_title("Image masquée et corrigée")
 
     # On trouve le plus grand contour et on le remplit, pour éviter de perdre les écritures noires à l'intérieur de la feuille
     contours, _ = cv2.findContours(largest_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -163,26 +158,125 @@ def test_segmentation(img : np.ndarray) -> np.ndarray :
         contour_mask = np.zeros(img.shape[:2], dtype=np.uint8)
         cv2.fillPoly(contour_mask, [largest_contour], 255)
         img_dot_mask = np.where(contour_mask[..., None] == 255, img, 255)
-        axes[2, 0].imshow(img_dot_mask)
-        axes[2, 0].set_title("Image avec contour_mask appliqué")
+        axes[1, 2].imshow(img_dot_mask)
+        axes[1, 2].set_title("Image avec contour_mask appliqué")
 
     # On utilise le nouveau corrected_perspective (défini dans ce script) pour que ça rajoute du blanc pour ce qui est
     # hors-champ
     corrected_image_dot_mask = corrected_perspective(img_dot_mask, box)
-    axes[2, 1].imshow(corrected_image_dot_mask)
-    axes[2, 1].set_title("Image dot mask corrigée")
+    axes[1, 3].imshow(corrected_image_dot_mask)
+    axes[1, 3].set_title("Image dot mask corrigée")
 
     gray = cv2.cvtColor(corrected_image_dot_mask, cv2.COLOR_BGR2GRAY)
-    axes[2, 2].imshow(gray, cmap='gray')
-    axes[2, 2].set_title("niveaux de gris avant seuillage final")
+    axes[2, 0].imshow(gray, cmap='gray')
+    axes[2, 0].set_title("niveaux de gris avant seuillage final")
     retval, thresh_image = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY)
-    axes[2, 3].imshow(thresh_image, cmap='gray', interpolation='None')
-    axes[2, 3].set_title("résultat final")
-    print(thresh_image)
+    axes[2, 1].imshow(thresh_image, cmap='gray', interpolation='None')
+    axes[2, 1].set_title("résultat final")
 
 
     plt.show()
     return largest_mask
+
+def test_augment(img):
+    h,w = img.shape[:2]
+    processed = crop_image_around_object(img, (1,1,w-2,h-2))
+    gray = cv2.cvtColor(processed, cv2.COLOR_BGR2GRAY)
+
+    he, wi = gray.shape[:2]
+    factor = 2
+    dest_size = (factor*wi, factor*he)
+    print("dest_size :", dest_size)
+
+    fig, axes = plt.subplots(4, 4, figsize=(8, 8))
+
+    # GRAY
+    axes[0, 0].imshow(gray, cmap = 'gray')
+    axes[0, 0].set_title("Gray")
+    smoothed = cv2.GaussianBlur(gray, (0, 0), sigmaX=1.5)
+    axes[0, 1].imshow(smoothed, cmap = 'gray')
+    axes[0, 1].set_title("Smoothed")
+    kernel = np.array([[0, -1, 0],
+                   [-1, 5, -1],
+                   [0, -1, 0]])
+    sharpened = cv2.filter2D(smoothed, -1, kernel)
+    axes[0, 2].imshow(sharpened, cmap = 'gray')
+    axes[0, 2].set_title("Smoothed then sharpened")
+    thresholded = cv2.adaptiveThreshold(sharpened, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                             cv2.THRESH_BINARY, 21, 2)
+    axes[0, 3].imshow(thresholded, cmap = 'gray')
+    axes[0, 3].set_title("Thresholded")
+
+    # CUBIC
+
+    augmented_cubic = cv2.resize(gray, dest_size, interpolation=cv2.INTER_CUBIC)
+    axes[1, 0].imshow(augmented_cubic, cmap = 'gray')
+    axes[1, 0].set_title("Cubic")
+    smoothed = cv2.GaussianBlur(augmented_cubic, (0, 0), sigmaX=1.5)
+    axes[1, 1].imshow(smoothed, cmap = 'gray')
+    axes[1, 1].set_title("Smoothed")
+    kernel = np.array([[0, -1, 0],
+                   [-1, 5, -1],
+                   [0, -1, 0]])
+    sharpened = cv2.filter2D(smoothed, -1, kernel)
+    axes[1, 2].imshow(sharpened, cmap = 'gray')
+    axes[1, 2].set_title("Smoothed then sharpened")
+    thresholded = cv2.adaptiveThreshold(sharpened, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                             cv2.THRESH_BINARY, 21, 2)
+    axes[1, 3].imshow(thresholded, cmap = 'gray')
+    axes[1, 3].set_title("Thresholded")
+
+    # LANCZOS
+
+    augmented_lanczos = cv2.resize(gray, dest_size, interpolation=cv2.INTER_LANCZOS4)
+    axes[2, 0].imshow(augmented_lanczos, cmap = 'gray')
+    axes[2, 0].set_title("Lanczos")
+    smoothed = cv2.GaussianBlur(augmented_lanczos, (0, 0), sigmaX=1.5)
+    axes[2, 1].imshow(smoothed, cmap = 'gray')
+    axes[2, 1].set_title("Smoothed")
+    kernel = np.array([[0, -1, 0],
+                   [-1, 5, -1],
+                   [0, -1, 0]])
+    sharpened = cv2.filter2D(smoothed, -1, kernel)
+    axes[2, 2].imshow(sharpened, cmap = 'gray')
+    axes[2, 2].set_title("Smoothed then sharpened")
+    thresholded = cv2.adaptiveThreshold(sharpened, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                             cv2.THRESH_BINARY, 21, 2)
+    axes[2, 3].imshow(thresholded, cmap = 'gray')
+    axes[2, 3].set_title("Thresholded")
+
+    # LINEAR
+
+    augmented_linear = cv2.resize(gray, dest_size, interpolation=cv2.INTER_LINEAR)
+    axes[3, 0].imshow(augmented_linear, cmap = 'gray')
+    axes[3, 0].set_title("Linear")
+    smoothed = cv2.GaussianBlur(augmented_linear, (0, 0), sigmaX=1.5)
+    axes[3, 1].imshow(smoothed, cmap = 'gray')
+    axes[3, 1].set_title("Smoothed")
+    kernel = np.array([[0, -1, 0],
+                   [-1, 5, -1],
+                   [0, -1, 0]])
+    sharpened = cv2.filter2D(smoothed, -1, kernel)
+    axes[3, 2].imshow(sharpened, cmap = 'gray')
+    axes[3, 2].set_title("Smoothed then sharpened")
+    thresholded = cv2.adaptiveThreshold(sharpened, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                             cv2.THRESH_BINARY, 21, 2)
+    axes[3, 3].imshow(thresholded, cmap = 'gray')
+    axes[3, 3].set_title("Thresholded")
+
+    # augmented = cv2.resize(gray, dest_size, interpolation=cv2.INTER_AREA)
+    # axes[1, 1].imshow(augmented, cmap = 'gray')
+    # axes[1, 1].set_title("Area")
+
+    # augmented = cv2.resize(gray, dest_size, interpolation=cv2.INTER_NEAREST)
+    # axes[1, 2].imshow(augmented, cmap = 'gray')
+    # axes[1, 2].set_title("Nearest")
+
+
+    plt.show()
+
+
+
 
 
 def crop_image_around_object(img:np.ndarray, rect:tuple) -> np.ndarray:
@@ -250,7 +344,9 @@ if __name__ == "__main__":
             img = cv2.imread(os.path.join(tmp_dir, f))
             h,w = img.shape[:2]
         
-            corrected = test_segmentation(img)
+            # corrected = test_segmentation(img)
+
+            test_augment(img)
             # cv2.imshow("PErspectivé", corrected)
             # cv2.waitKey(0)
             # cv2.destroyAllWindows()
