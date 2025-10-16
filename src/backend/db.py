@@ -14,6 +14,7 @@ if PROJECT_ROOT not in sys.path:
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from ner.compare_entities import same_event
+from src.utils.text_utils import compute_diff
 
 DB_PATH = os.environ.get("RTE_DB_PATH", "data/db/notes.sqlite")
 
