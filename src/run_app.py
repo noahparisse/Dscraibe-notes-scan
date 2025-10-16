@@ -18,7 +18,7 @@ def main():
     print(video_capture_path)
 
     # Pour l'audio
-    # audio_path = os.path.join(BASE_DIR, "../audio/audio_capture.py")
+    audio_path = os.path.join(BASE_DIR, "transcription/audio_watcher.py")
 
     processes = []
     try:
@@ -34,9 +34,8 @@ def main():
         processes.append(subprocess.Popen(["python3", video_capture_path], stdout=sys.stdout, stderr=sys.stderr, cwd=project_root))
         #processes.append(subprocess.Popen(["python3", yolo_path], stdout=sys.stdout, stderr=sys.stderr, cwd=project_root))
 
-        # Lancer l'audio en arrière-plan (décommenter si besoin)
-        # if audio_path:
-        #     processes.append(subprocess.Popen(["python3", audio_path], stdout=sys.stdout, stderr=sys.stderr))
+        # Lancer l'audio en arrière-plan
+        processes.append(subprocess.Popen(["python3", audio_path], stdout=sys.stdout, stderr=sys.stderr))
 
         print("Tous les process ont été lancés en arrière-plan.")
         print("Le système est en train de numériser les notes.")

@@ -94,13 +94,9 @@ def record_loop(duration, stop_event, device,  bruit_reduction=True, samplerate=
                 "end_time": end_time.strftime("%Y-%m-%d %H:%M:%S"),
                 "filename": filename
             }
-            logs.append(entry)
 
             with open(log_path, "w", encoding="utf-8") as f:
-                json.dump(logs, f, indent=4, ensure_ascii=False)
+                json.dump([entry], f, indent=4, ensure_ascii=False)
                 
 
-            
 
-if __name__ == "__main__":
-    record_loop(duration=5)
