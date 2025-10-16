@@ -14,7 +14,7 @@ import time
 from datetime import datetime
 from ultralytics import YOLO
 import os, sys
-from blurry_detection import less_blurred
+from blurry_detection import less_blurred, less_blurred_roi
 # from segmentation import crop_image_around_object
 from segmentation_threshold import crop_image_around_object, get_binary_image_of_text
 
@@ -44,7 +44,8 @@ try :
             elif len(video)<20: # Si un objet est en cours de capture
                 video.append(result)
             elif len(video)==20:    # Si on a fini de capturer l'objet
-                best = less_blurred(video)  # Indice de la frame la moins floue
+                # best = less_blurred(video)  # Indice de la frame la moins floue
+                best_roi = less_blurred_roi(video)
                 stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
 
                 # filename_frame = os.path.join(BASE_DIR, "../../../tmp", f"photo_{stamp}.jpg")
@@ -53,7 +54,7 @@ try :
                 # video[best].save_txt(os.path.join(save_dir_object, f"output_{stamp}.txt"))
                 # cv2.imwrite(filename_frame, video[best].orig_img)                              # On enregistre la frame avec la bounding box tracée
                 
-                x, y, w, h = video[best].boxes.xywh[0]
+                x, y, w, h = video[best_roi].boxes.xywh[0]
                 box_x_left = int(x-0.5*w)
                 box_y_top = int(y-0.5*h)
                 rect = (box_x_left, box_y_top, int(w), int(h))
@@ -61,38 +62,42 @@ try :
                 # print("shape :", result.orig_img.shape)
 
                 # processed = crop_image_around_object(video[best].orig_img, rect)
-                thresholded = get_binary_image_of_text(video[best].orig_img, rect)
+                processed_roi = crop_image_around_object(video[best_roi].orig_img, rect)
+                # thresholded = get_binary_image_of_text(video[best].orig_img, rect)
                 # filename_frame = os.path.join(BASE_DIR, "../../../tmp/paper", f"paper_{stamp}.jpg")
-                filename_frame2 = os.path.join(BASE_DIR, "../../../tmp/paper", f"paper_processed_{stamp}.jpg")
-                cv2.imwrite(filename_frame2, thresholded)   
+                # filename_frame2 = os.path.join(BASE_DIR, "../../../tmp/paper", f"paper_processed_{stamp}.jpg")
+                filename_frame2_roi = os.path.join(BASE_DIR, "../../../tmp/paper", f"paper_processed_roi_{stamp}.jpg")
+                # cv2.imwrite(filename_frame2, processed)   
+                cv2.imwrite(filename_frame2_roi, processed_roi)  
                 # cv2.imwrite(filename_frame, thresholded) 
-
-                add_data2db(filename_frame2)  # On ajoute l'image rognée à la base de données
+                add_data2db(filename_frame2_roi)  # On ajoute l'image rognée à la base de données
 
                 video = []      # On réinitialise la sous-vidéo capturée
 
                 
         elif len(video)>0:  # Si l'objet a disparu avant la fin de la capture des 20 frames
-            best = less_blurred(video)  # Indice de la frame la moins floue
+            # best = less_blurred(video)  # Indice de la frame la moins floue
+            best_roi = less_blurred_roi(video)
             stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
 
-            filename_frame = os.path.join(BASE_DIR, "../../../tmp/paper", f"paper_{stamp}.jpg")
-            filename_frame2 = os.path.join(BASE_DIR, "../../../tmp/paper", f"paper_processed_{stamp}.jpg")
+            # filename_frame = os.path.join(BASE_DIR, "../../../tmp/paper", f"paper_{stamp}.jpg")
+            # filename_frame2 = os.path.join(BASE_DIR, "../../../tmp/paper", f"paper_processed_{stamp}.jpg")
+            filename_frame2_roi = os.path.join(BASE_DIR, "../../../tmp/paper", f"paper_processed_roi_{stamp}.jpg")
             # save_dir_object = os.path.join(BASE_DIR, "../../../tmp")
             # video[best].save_crop(save_dir_object, file_name = f"object_{stamp}.jpg")    # On enregistre la bounding box en tant qu'image
             # video[best].save_txt(os.path.join(save_dir_object, f"output_{stamp}.txt"))
-            x, y, w, h = video[best].boxes.xywh[0]
+            x, y, w, h = video[best_roi].boxes.xywh[0]
             box_x_left = int(x-0.5*w)
             box_y_top = int(y-0.5*h)
             rect = (box_x_left, box_y_top, int(w), int(h))
 
             # processed = crop_image_around_object(video[best].orig_img, rect)
-            thresholded = get_binary_image_of_text(video[best].orig_img, rect)
-            cv2.imwrite(filename_frame2, thresholded)   
+            processed_roi = crop_image_around_object(video[best_roi].orig_img, rect)
+            # thresholded = get_binary_image_of_text(video[best].orig_img, rect)
+            # cv2.imwrite(filename_frame2, processed)   
+            cv2.imwrite(filename_frame2_roi, processed_roi)  
             # cv2.imwrite(filename_frame, thresholded)                              # On enregistre la frame avec la bounding box tracée
-            
-            add_data2db(filename_frame2)  # On ajoute l'image rognée à la base de données
-
+            add_data2db(filename_frame2_roi)  # On ajoute l'image rognée à la base de données
             video = []      # On réinitialise la sous-vidéo capturée
 except KeyboardInterrupt :
     print("Arrêt demandé par l'utilisateur.")

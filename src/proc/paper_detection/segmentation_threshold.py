@@ -5,6 +5,7 @@ import cv2
 from matplotlib import pyplot as plt
 import os
 from datetime import datetime
+from perspective_corrector import corrected_perspective
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
@@ -39,7 +40,7 @@ def get_output_size(corners):
     return max_width, max_height
 
 
-def corrected_perspective(img, corners):
+def corrected_perspective_white(img, corners):
     '''
     Applique une correction de perspective pour redresser la feuille, en ajoutant un fond blanc lorsqu'il rajoute du fond
     '''
@@ -137,10 +138,10 @@ def test_segmentation(img : np.ndarray) -> np.ndarray :
     axes[0, 3].set_title("rectangle")
 
     # On utilise le rectangle pour croper et remettre vertical
-    corrected_image = corrected_perspective(img, box)
+    corrected_image = corrected_perspective_white(img, box)
     axes[1, 0].imshow(corrected_image)
     axes[1, 0].set_title("Image corrigée")
-    masked_corrected_img = corrected_perspective(masked_image, box)
+    masked_corrected_img = corrected_perspective_white(masked_image, box)
     axes[1, 1].imshow(masked_corrected_img)
     axes[1, 1].set_title("Image masquée et corrigée")
 
@@ -163,17 +164,30 @@ def test_segmentation(img : np.ndarray) -> np.ndarray :
 
     # On utilise le nouveau corrected_perspective (défini dans ce script) pour que ça rajoute du blanc pour ce qui est
     # hors-champ
-    corrected_image_dot_mask = corrected_perspective(img_dot_mask, box)
+    corrected_image_dot_mask = corrected_perspective_white(img_dot_mask, box)
     axes[1, 3].imshow(corrected_image_dot_mask)
     axes[1, 3].set_title("Image dot mask corrigée")
 
     gray = cv2.cvtColor(corrected_image_dot_mask, cv2.COLOR_BGR2GRAY)
     axes[2, 0].imshow(gray, cmap='gray')
     axes[2, 0].set_title("niveaux de gris avant seuillage final")
-    retval, thresh_image = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY)
+    retval, thresh_image = cv2.threshold(gray, 2, 180, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     axes[2, 1].imshow(thresh_image, cmap='gray', interpolation='None')
     axes[2, 1].set_title("résultat final")
 
+    # On va chercher les 4 points extremes du mask pour recroper
+    corrected_mask = corrected_perspective(largest_mask, box)
+    extreme_points = get_extreme_points(corrected_mask)
+    img_corners = corrected_mask.copy()
+    img_corners = cv2.cvtColor(img_corners, cv2.COLOR_GRAY2BGR)
+    for (x,y) in extreme_points:
+        print("Extreme-point :", x, y)
+        cv2.circle(img_corners, (x, y), 10, (255, 0, 0), 10)
+    axes[2, 2].imshow(img_corners)
+    axes[2, 2].set_title("Extreme_points")
+    quadri_cropped = corrected_perspective_white(corrected_image, extreme_points)
+    axes[2, 3].imshow(quadri_cropped)
+    axes[2, 3].set_title("Quadri-cropped")
 
     plt.show()
     return largest_mask
@@ -202,8 +216,7 @@ def test_augment(img):
     sharpened = cv2.filter2D(smoothed, -1, kernel)
     axes[0, 2].imshow(sharpened, cmap = 'gray')
     axes[0, 2].set_title("Smoothed then sharpened")
-    thresholded = cv2.adaptiveThreshold(sharpened, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                             cv2.THRESH_BINARY, 21, 2)
+    _, thresholded = cv2.threshold(sharpened, 180, 255, cv2.THRESH_BINARY)
     axes[0, 3].imshow(thresholded, cmap = 'gray')
     axes[0, 3].set_title("Thresholded")
 
@@ -221,8 +234,7 @@ def test_augment(img):
     sharpened = cv2.filter2D(smoothed, -1, kernel)
     axes[1, 2].imshow(sharpened, cmap = 'gray')
     axes[1, 2].set_title("Smoothed then sharpened")
-    thresholded = cv2.adaptiveThreshold(sharpened, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                             cv2.THRESH_BINARY, 21, 2)
+    _, thresholded = cv2.threshold(sharpened, 180, 255, cv2.THRESH_BINARY)
     axes[1, 3].imshow(thresholded, cmap = 'gray')
     axes[1, 3].set_title("Thresholded")
 
@@ -240,8 +252,7 @@ def test_augment(img):
     sharpened = cv2.filter2D(smoothed, -1, kernel)
     axes[2, 2].imshow(sharpened, cmap = 'gray')
     axes[2, 2].set_title("Smoothed then sharpened")
-    thresholded = cv2.adaptiveThreshold(sharpened, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                             cv2.THRESH_BINARY, 21, 2)
+    _, thresholded = cv2.threshold(sharpened, 180, 255, cv2.THRESH_BINARY)
     axes[2, 3].imshow(thresholded, cmap = 'gray')
     axes[2, 3].set_title("Thresholded")
 
@@ -259,8 +270,7 @@ def test_augment(img):
     sharpened = cv2.filter2D(smoothed, -1, kernel)
     axes[3, 2].imshow(sharpened, cmap = 'gray')
     axes[3, 2].set_title("Smoothed then sharpened")
-    thresholded = cv2.adaptiveThreshold(sharpened, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                             cv2.THRESH_BINARY, 21, 2)
+    _, thresholded = cv2.threshold(sharpened, 180, 255, cv2.THRESH_BINARY)
     axes[3, 3].imshow(thresholded, cmap = 'gray')
     axes[3, 3].set_title("Thresholded")
 
@@ -293,40 +303,33 @@ def crop_image_around_object(img:np.ndarray, rect:tuple) -> np.ndarray:
     x, y, w, h = rect
     roi = img[y:y+h, x:x+w]
     # stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    # cv2.imwrite(f"/Users/noahparisse/Documents/Paris-digital-lab/P1 RTE/detection-notes/tmp/paper/roi_{stamp}.jpg", roi)
     rect = (1,1,w-2,h-2)
     mask = get_mask(roi)
-
-    # mask_color = np.zeros_like(roi)
-    # mask_color[mask>0]=np.array([0, 0, 255])
-    # overlay = np.zeros_like(roi)
-    # overlay = cv2.addWeighted(roi, 1.0, mask_color, 0.5, 0, overlay)
-    # cv2.imwrite(f"/Users/noahparisse/Documents/Paris-digital-lab/P1 RTE/detection-notes/tmp/paper/overlay_{stamp}.jpg", overlay)
 
     points = np.column_stack(np.where(mask > 0))
     rect = cv2.minAreaRect(points[:, ::-1])
     box = cv2.boxPoints(rect)
     box = np.int32(box)
-    # mask_rect = mask.copy()
-    # mask_rect = cv2.cvtColor(mask_rect, cv2.COLOR_GRAY2RGB)
-    # cv2.drawContours(mask_rect,[box],0,(255,0,0),2)
-    # img_rect = img.copy()
-    # img_rect = cv2.cvtColor(img_rect, cv2.COLOR_BGR2RGB)
-    # cv2.drawContours(img_rect,[box],0,(255,0,0),2)
 
-    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    if contours:
-        largest_contour = max(contours, key=cv2.contourArea)
-    else:
-        largest_contour = None
-    if not largest_contour is None :
-        contour_mask = np.zeros(roi.shape[:2], dtype=np.uint8)
-        cv2.fillPoly(contour_mask, [largest_contour], 255)
-        roi_dot_mask = np.where(contour_mask[..., None] == 255, roi, 255)
+    # contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # if contours:
+    #     largest_contour = max(contours, key=cv2.contourArea)
+    # else:
+    #     largest_contour = None
+    # if not largest_contour is None :
+    #     contour_mask = np.zeros(roi.shape[:2], dtype=np.uint8)
+    #     cv2.fillPoly(contour_mask, [largest_contour], 255)
+    #     roi_dot_mask = np.where(contour_mask[..., None] == 255, roi, 255)
     
-    corrected_image_dot_mask = corrected_perspective(roi_dot_mask, box)
+    # corrected_image_dot_mask = corrected_perspective_white(roi_dot_mask, box)
 
-    return corrected_image_dot_mask
+    corrected_mask = corrected_perspective(mask, box)
+    extreme_points = get_extreme_points(corrected_mask)
+    
+    corrected_image = corrected_perspective_white(roi, box)
+    cropped = corrected_perspective_white(corrected_image, extreme_points)
+
+    return cropped
 
 def get_binary_image_of_text(img:np.ndarray, rect:tuple) -> np.ndarray:
     corrected_masked_image = crop_image_around_object(img, rect)
@@ -344,9 +347,9 @@ if __name__ == "__main__":
             img = cv2.imread(os.path.join(tmp_dir, f))
             h,w = img.shape[:2]
         
-            # corrected = test_segmentation(img)
+            corrected = test_segmentation(img)
 
-            test_augment(img)
+            # test_augment(img)
             # cv2.imshow("PErspectivé", corrected)
             # cv2.waitKey(0)
             # cv2.destroyAllWindows()
