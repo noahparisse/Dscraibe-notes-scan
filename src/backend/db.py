@@ -237,15 +237,18 @@ def get_last_notes(db_path: str = DB_PATH) -> Dict[str, str]:
     con.row_factory = sqlite3.Row
     cur = con.cursor()
     cur.execute("""
-        SELECT DISTINCT img_path_proc
+    SELECT DISTINCT n1.img_path_proc
+    FROM notes_meta AS n1
+    INNER JOIN (
+        SELECT note_id, MAX(ts) AS max_ts
         FROM notes_meta
-        WHERE note_id, ts = (SELECT note_id, MAX(ts) as ts
-                            FROM notes_meta
-                            WHERE note_id IS NOT NULL
-                            GROUP BY note_id)
-        ORDER BY ts DESC
-        LIMIT 20
-    """)
+        WHERE note_id IS NOT NULL
+        GROUP BY note_id
+    ) AS n2
+    ON n1.note_id = n2.note_id AND n1.ts = n2.max_ts
+    ORDER BY n1.ts DESC
+    LIMIT 20;
+""")
     result = []
     for row in cur.fetchall():
         if row["img_path_proc"]:
