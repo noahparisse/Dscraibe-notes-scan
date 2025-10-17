@@ -82,7 +82,7 @@ def insert_note_meta(meta: dict, img_path_proc: Optional[str] = None, db_path: s
         evenement_id = str(uuid.uuid4())  # Nouveau groupe d'événement
 
     # Insertion de la note
-        row = (
+    row = (
         now,
         meta.get("note_id"),
         meta.get("transcription_brute"),

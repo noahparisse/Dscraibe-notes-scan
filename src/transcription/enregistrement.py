@@ -98,5 +98,3 @@ def record_loop(duration, stop_event, device,  bruit_reduction=True, samplerate=
             with open(log_path, "w", encoding="utf-8") as f:
                 json.dump([entry], f, indent=4, ensure_ascii=False)
                 
-
-

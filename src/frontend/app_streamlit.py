@@ -132,56 +132,51 @@ with st.sidebar:
         st.caption("Aucune note disponible pour le moment.")
 
     # Filtres par entité
-    st.subheader("Filtres entités")
+    st.subheader("Recherche entités")
+    entity_query = st.text_input(
+        "Rechercher dans toutes les entités (mots séparés par des espaces)",
+        key="search_all_entities",
+    )
 
-    # Catégories disponibles
-    available_categories = ["GEO", "DATETIME", "EVENT", "ACTOR",
-                            "INFRASTRUCTURE", "OPERATING_CONTEXT", "PHONE_NUMBER", "ELECTRICAL_VALUE"]
+    notes_entity_filtered = None
 
-    all_clauses = []
-    all_params = []
+    if entity_query.strip():
+        # Découpage en mots-clés
+        terms = [t.strip() for t in entity_query.split() if t.strip()]
 
-    # Champs de recherche entités, un par catégorie
-    for cat in available_categories:
-        search_input = st.text_input(
-            f"{cat}",
-            key=f"search_{cat}",
-            placeholder=f"Rechercher dans {cat}..."
-        )
+        entity_columns = [
+            "entite_GEO", "entite_DATETIME", "entite_EVENT", "entite_ACTOR",
+            "entite_INFRASTRUCTURE", "entite_OPERATING_CONTEXT",
+            "entite_PHONE_NUMBER", "entite_ELECTRICAL_VALUE"
+        ]
 
-        if search_input.strip():
-            terms = [t.strip() for t in search_input.split() if t.strip()]
-            col_name = f"entite_{cat}"
+        # Pour chaque terme, on crée un OR entre toutes les colonnes entités
+        # Puis on combine les différents termes avec AND (chaque mot doit apparaître quelque part)
+        term_clauses = []
+        params = []
 
-            # AND entre les mots de la même catégorie
-            category_clauses = [
-                f"LOWER({col_name}) LIKE LOWER(?)" for _ in terms]
-            category_where = " AND ".join(category_clauses)
+        for term in terms:
+            like_clauses = [f"LOWER({col}) LIKE LOWER(?)" for col in entity_columns]
+            term_clause = "(" + " OR ".join(like_clauses) + ")"
+            term_clauses.append(term_clause)
+            params.extend([f"%{term}%"] * len(entity_columns))
 
-            all_clauses.append(f"({category_where})")
-            all_params.extend([f"%{term}%" for term in terms])
+        final_where = " AND ".join(term_clauses)
 
-    # Exécution de la requête combinée si au moins un champ est rempli
-    if all_clauses:
-        final_where = " AND ".join(all_clauses)
         query = f"""
-            SELECT evenement_id, COUNT(*) as note_count
+            SELECT *
             FROM notes_meta
             WHERE {final_where}
-            AND evenement_id IS NOT NULL
-            GROUP BY evenement_id
+            ORDER BY ts DESC
         """
 
         with get_conn(DB_PATH) as con:
-            rows = con.execute(query, all_params).fetchall()
+            notes_entity_filtered = [dict(r) for r in con.execute(query, params).fetchall()]
 
         st.markdown("---")
-        st.write(
-            f"**{len(rows)}** événements trouvés correspondant aux critères :")
-        for r in rows:
-            st.write(f"{r['evenement_id']} ({r['note_count']} notes)")
+        st.write(f"**{len(notes_entity_filtered)}** notes trouvées correspondant aux critères entités.")
 
-    # Filtres par entité
+    # Filtres par événement
     st.subheader("Filtre événement")
 
     # Barre de recherche par événement ID
@@ -191,7 +186,9 @@ with st.sidebar:
     )
 
 # Chargement des notes
-if event_id_search.strip():
+if notes_entity_filtered is not None:
+    notes = notes_entity_filtered
+elif event_id_search.strip():
     # Si on a tapé un ID d'événement, on affiche les notes de cet événement uniquement
     with get_conn(DB_PATH) as con:
         rows = con.execute("""
@@ -201,7 +198,6 @@ if event_id_search.strip():
             ORDER BY ts ASC
         """, (f"%{event_id_search.strip()}%",)).fetchall()
     notes = [dict(r) for r in rows]
-
 elif selected_note_id == "(toutes)":
     # Filtrage classique sur note_id
     notes = fetch_notes(limit=limit, ts_from=ts_from, ts_to=ts_to, q=q)

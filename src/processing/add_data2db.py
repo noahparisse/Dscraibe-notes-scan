@@ -9,17 +9,17 @@ REPO_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if REPO_PATH not in sys.path:
     sys.path.insert(0, REPO_PATH)
 
-from src.processing.mistral_ocr_llm import image_transcription
-from src.backend.db import (
+from processing.mistral_ocr_llm import image_transcription
+from backend.db import (
     DB_PATH,
     insert_note_meta,
     get_last_text_for_notes,
     find_similar_note 
 )
-from src.processing.mistral_ocr_llm import image_transcription
-from src.ner.spacy_model import extract_entities
-from src.utils.text_utils import has_meaningful_line, has_meaningful_text, compute_diff, is_htr_buggy, clean_added_text_for_ner
-from src.utils.image_utils import encode_image
+from processing.mistral_ocr_llm import image_transcription
+from ner.spacy_model import extract_entities
+from utils.text_utils import has_meaningful_line, has_meaningful_text, compute_diff, is_htr_buggy, clean_added_text_for_ner
+from utils.image_utils import encode_image
 
 
 def add_data2db(image_path: str, db_path: str = DB_PATH):
