@@ -22,15 +22,15 @@ import warnings
 warnings.filterwarnings("ignore")
 
 # Si un segment de parole détecté dure moins de 3 secondes, il sera ignoré.
-min_duration_on_choice = 1
+min_duration_on_choice = 7
 
 # Si une pause est plus courte que 10 secondes, elle peut être remplie ou fusionnée avec les segments voisins.
-min_duration_off_choice = 1
+min_duration_off_choice = 10
 prompt = "Abréviations officielles (ne pas développer ; corrige variantes proches vers la forme officielle): SNCF, ABC, RSD, TIR, PF, GEH, SMACC, COSE, TRX, VPL, MNV, N-1, COSE-P"
 
 if __name__ == "__main__":
     try:
-        record_duration = 10
+        record_duration = 30
         stop_event = threading.Event()
         device_index = 0
         enregistrement_thread = threading.Thread(target = record_loop, args=(record_duration, stop_event, device_index))

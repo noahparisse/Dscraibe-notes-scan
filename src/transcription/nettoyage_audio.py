@@ -27,6 +27,7 @@ def nettoyer_transcription_audio(texte: str) -> str:
     3) Ajoute des retours à la ligne pour rendre le texte lisible :
     - Une idée ou une phrase = une ligne.
     - Ne fusionne pas tout sur une seule ligne.
+    - N'utilise pas les ```
     4) N’ajoute rien, ne reformule pas.
     5) Si le texte est vide ou incompréhensible, renvoie une chaîne vide.
     6) Abréviations officielles (ne pas développer ; corrige variantes proches vers la forme officielle) :
