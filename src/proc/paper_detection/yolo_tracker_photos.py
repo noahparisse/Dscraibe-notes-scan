@@ -74,7 +74,7 @@ try :
                     buffer = []
             else :
                 buffer = []
-            cv2.desroyAllWindows()
+            cv2.destroyAllWindows()
             if boxes and len(boxes)>0:
                 for i in range(len(boxes.xywh)):
                     (x, y, w, h) = boxes.xywh[i]
