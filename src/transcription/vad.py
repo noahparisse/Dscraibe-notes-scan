@@ -39,6 +39,8 @@ def VADe(audio_path, min_duration_on=3.0, min_duration_off=2.0):
     vad = pipeline(audio_path)
 
     log_path = os.path.join("src/transcription/tmp", "transcriptions_log.json")
+    logs_folder = os.path.dirname(log_path)
+    os.makedirs(logs_folder, exist_ok=True)
 
     # Charger le JSON existant s'il existe
     if os.path.exists(log_path):
