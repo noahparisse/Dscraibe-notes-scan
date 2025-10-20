@@ -2,6 +2,7 @@ import streamlit as st
 import importlib.util
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+from PIL import Image
 import json
 import time
 import sqlite3
@@ -100,7 +101,7 @@ with st.sidebar:
     st.subheader("Filtres généraux")
     limit = st.slider("Nombre de notes (max)", min_value=5,
                       max_value=200, value=50, step=5)
-    q = st.text_input("Recherche texte (OCR, clean, ajouté)", value="")
+    q = st.text_input("Recherche texte (clean, ajouté)", value="")
 
     col1, col2 = st.columns(2)
     with col1:
@@ -233,9 +234,6 @@ for n in notes:
 
     # Colonne centre : textes
     with header_cols[1]:
-        st.markdown("**Transcription brute**")
-        st.markdown(f"```\n{n.get('transcription_brute') or '—'}\n```")
-
         st.markdown("**Transcription nettoyée**")
         st.markdown(f"```\n{n.get('transcription_clean') or '—'}\n```")
 
@@ -244,7 +242,7 @@ for n in notes:
 
     # Colonne droite : image ou lecteur audio si présent dans raw_json
     with header_cols[2]:
-        img = safe_image(n.get("img_path_proc"))
+        img_path = safe_image(n.get("img_path_proc"))
         trans = n.get("transcription_clean")
         
         tmp_dir = os.path.join(os.path.join(os.path.dirname(__file__), "../../src/transcription/tmp"))
@@ -260,42 +258,63 @@ for n in notes:
             if trans == trans_2 : 
                 audio_path = tmp_dir + "/" + d.get("filename")
 
-        if img:
-            st.image(img, width='stretch', caption=os.path.basename(img))
+        if img_path:
+            img = Image.open(img_path)
+            # Rotation de 90° dans le sens horaire
+            img = img.rotate(-90, expand=True)
+            st.image(img, width='stretch', caption=os.path.basename(img_path))
         elif audio_path and os.path.exists(audio_path):
             st.audio(audio_path, format="audio/wav")
             st.caption(os.path.basename(audio_path))
         else:
             st.caption("Pas d'image/audio disponible")
 
-    # (Images extraites supprimées - champ 'images' retiré de la base)
-    # Entités extraites
-    with st.expander("Entités extraites"):
-        def parse_entities_field(field_name: str):
-            val = n.get(field_name)
-            if val:
-                try:
-                    return json.loads(val)
-                except Exception:
-                    return []
-            return []
+    # Affichage des entités
+    def parse_entities_field(field_name: str):
+        val = n.get(field_name)
+        if val:
+            try:
+                return json.loads(val)
+            except Exception:
+                return []
+        return []
 
-        entities_display = {
-            "GEO": parse_entities_field("entite_GEO"),
-            "ACTOR": parse_entities_field("entite_ACTOR"),
-            "DATETIME": parse_entities_field("entite_DATETIME"),
-            "EVENT": parse_entities_field("entite_EVENT"),
-            "INFRASTRUCTURE": parse_entities_field("entite_INFRASTRUCTURE"),
-            "OPERATING_CONTEXT": parse_entities_field("entite_OPERATING_CONTEXT"),
-            "PHONE_NUMBER": parse_entities_field("entite_PHONE_NUMBER"),
-            "ELECTRICAL_VALUE": parse_entities_field("entite_ELECTRICAL_VALUE"),
-        }
+    entities_display = {
+        "GEO": parse_entities_field("entite_GEO"),
+        "ACTOR": parse_entities_field("entite_ACTOR"),
+        "DATETIME": parse_entities_field("entite_DATETIME"),
+        "EVENT": parse_entities_field("entite_EVENT"),
+        "INFRASTRUCTURE": parse_entities_field("entite_INFRASTRUCTURE"),
+        "OPERATING_CONTEXT": parse_entities_field("entite_OPERATING_CONTEXT"),
+        "PHONE_NUMBER": parse_entities_field("entite_PHONE_NUMBER"),
+        "ELECTRICAL_VALUE": parse_entities_field("entite_ELECTRICAL_VALUE"),
+    }
 
-        if not any(entities_display.values()):
-            st.caption("Aucune entité stockée pour cette note.")
-        else:
-            for label, values in entities_display.items():
-                st.write(f"**{label}** : {', '.join(values) or '—'}")
+    # Couleurs par type d'entité
+    entity_colors = {
+        "GEO": "#E63946",            # rouge vif
+        "ACTOR": "#457B9D",          # bleu profond
+        "DATETIME": "#2A9D8F",       # vert sarcelle
+        "EVENT": "#F4A261",          # orange chaud
+        "INFRASTRUCTURE": "#E9C46A", # jaune doré
+        "OPERATING_CONTEXT": "#9D4EDD", # violet foncé
+        "PHONE_NUMBER": "#1D3557",   # bleu nuit
+        "ELECTRICAL_VALUE": "#F72585", # rose vif
+    }
+
+    # Rassembler toutes les entités dans une seule liste avec couleur
+    all_entities_html = []
+    for label, values in entities_display.items():
+        for v in values:
+            all_entities_html.append(
+                f'<span style="background-color:{entity_colors[label]}; color:#000; padding:3px 8px; border-radius:5px; margin:2px; display:inline-block;">{v}</span>'
+            )
+
+    if not all_entities_html:
+        st.caption("Aucune entité stockée pour cette note.")
+    else:
+        st.markdown(" ".join(all_entities_html), unsafe_allow_html=True)
+
 
     # ----- Actions -----
     st.markdown("**Actions**")

@@ -23,7 +23,6 @@ while True:
 
     # Vérification que l'image est bien capturée
     if not ret or img is None:
-        print("⚠️ Aucune image capturée. Vérifie la caméra ou l'index du périphérique.")
         continue  # on saute cette itération au lieu de planter
 
     possible_papers = shape_detector(img)
