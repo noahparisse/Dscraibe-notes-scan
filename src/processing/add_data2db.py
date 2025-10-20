@@ -14,7 +14,8 @@ from src.backend.db import (
     DB_PATH,
     insert_note_meta,
     get_last_text_for_notes,
-    find_similar_note 
+    find_similar_note ,
+    find_similar_image
 )
 from src.processing.mistral_ocr_llm import image_transcription
 from src.ner.llm_extraction import extract_entities
@@ -28,6 +29,7 @@ from src.utils.text_utils import (
     reflow_sentences,
 )
 from src.utils.image_utils import encode_image
+from src.image_similarity.orb_and_align import isSimilar
 
 
 def add_data2db(image_path: str, db_path: str = DB_PATH):
@@ -42,6 +44,12 @@ def add_data2db(image_path: str, db_path: str = DB_PATH):
        Sinon :
          - crée un nouveau note_id et insère tout le texte (comme ajout initial)
     """
+
+    # Précheck : comparaison visuelle des images
+    if find_similar_image(image_path, db_path) is not None:
+        print("L'image captée a déjà été enregistrée en BBD.")
+        return None
+
     # 0) Encodage de l'image en base64 (pour Mistral OCR)
     encoded_image = encode_image(image_path)
 
