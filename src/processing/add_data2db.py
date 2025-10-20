@@ -88,7 +88,7 @@ def add_data2db(image_path: str, db_path: str = DB_PATH):
         s_prev = reflow_sentences(prev_text or "", width=80)
         s_new = reflow_sentences(cleaned_text or "", width=80)
         score_info = score_and_categorize_texts(s_prev, s_new)
-        if score_info.get("score", 0.0) > 0.8:
+        if score_info.get("score", 0.0) > 0.95:
             print(f"[SKIP] Similar existing note {nid} (score={score_info['score']}) — insertion skipped for {image_path}")
             return None
 

@@ -84,6 +84,56 @@ def _align_block(old_block: List[str], new_block: List[str]) -> Tuple[List[Tuple
     return matches, old_unmatched, new_unmatched
 
 
+def _try_split_merge_matches(old_block: List[str], new_block: List[str], split_thresh: float = 0.85):
+    """
+    Detecte localement des splits (1 old -> 2 new) et merges (2 old -> 1 new).
+    Retourne:
+      - matches: liste de tuples ((i_start,i_end), (j_start,j_end), kind) avec kind in {"1to2","2to1"}
+      - used_old: set d'indices old consommés
+      - used_new: set d'indices new consommés
+    """
+    n_old, n_new = len(old_block), len(new_block)
+    used_old, used_new = set(), set()
+    matches = []
+
+    # --- 1 -> 2 (split)
+    for i in range(n_old):
+        if i in used_old:
+            continue
+        best = None
+        for j in range(n_new - 1):
+            if j in used_new or (j + 1) in used_new:
+                continue
+            sim = _similarity(old_block[i], f"{new_block[j]} {new_block[j+1]}".strip())
+            if best is None or sim > best[0]:
+                best = (sim, i, j)
+        if best and best[0] >= split_thresh:
+            sim, i0, j0 = best
+            matches.append(((i0, i0), (j0, j0 + 1), "1to2"))
+            used_old.add(i0)
+            used_new.update({j0, j0 + 1})
+
+    # --- 2 -> 1 (merge)
+    for j in range(n_new):
+        if j in used_new:
+            continue
+        best = None
+        for i in range(n_old - 1):
+            if i in used_old or (i + 1) in used_old:
+                continue
+            sim = _similarity(f"{old_block[i]} {old_block[i+1]}".strip(), new_block[j])
+            if best is None or sim > best[0]:
+                best = (sim, i, j)
+        if best and best[0] >= split_thresh:
+            sim, i0, j0 = best
+            matches.append(((i0, i0 + 1), (j0, j0), "2to1"))
+            used_old.update({i0, i0 + 1})
+            used_new.add(j0)
+
+    matches.sort(key=lambda m: m[1][0])
+    return matches, used_old, used_new
+
+
 def compute_diff(old_text: str,
                  new_text: str,
                  minor_change_threshold: float = 0.90) -> Tuple[str, List[Dict]]:
@@ -115,22 +165,85 @@ def compute_diff(old_text: str,
         new_block = new_lines[j1:j2]
 
         if tag in ("replace", "insert", "delete"):
-            # Aligne intelligemment, même si tailles identiques
-            matches, old_unmatched, new_unmatched = _align_block(
-                old_block, new_block)
+            # 0) split/merge detection local (1->2, 2->1)
+            split_matches, used_old, used_new = _try_split_merge_matches(old_block, new_block, split_thresh=0.85)
+            for (i_start, i_end), (j_start, j_end), kind in split_matches:
+                if kind == "1to2":
+                    a = old_block[i_start]
+                    b1, b2 = new_block[j_start], new_block[j_start + 1]
 
-            # 1) REPLACE (pour les paires appariées)
-            for i_rel, j_rel, sim in matches:
+                    sim1 = _similarity(a, b1)
+                    if _normalize_for_similarity(a) != _normalize_for_similarity(b1) and sim1 < minor_change_threshold and b1.strip():
+                        line_new = j1 + j_start + 1
+                        human_rows.append(f"~ Ligne {line_new}. {b1}")
+                        diff_json.append({
+                            "type": "replace",
+                            "line": line_new,
+                            "old_line": i1 + i_start + 1,
+                            "old_content": a,
+                            "content": b1,
+                            "similarity": float(sim1),
+                            "note": "split(1→2)-part1"
+                        })
+
+                    sim2 = _similarity(a, b2)
+                    if _normalize_for_similarity(a) != _normalize_for_similarity(b2) and sim2 < minor_change_threshold and b2.strip():
+                        line_new = j1 + j_start + 2
+                        human_rows.append(f"~ Ligne {line_new}. {b2}")
+                        diff_json.append({
+                            "type": "replace",
+                            "line": line_new,
+                            "old_line": i1 + i_start + 1,
+                            "old_content": a,
+                            "content": b2,
+                            "similarity": float(sim2),
+                            "note": "split(1→2)-part2"
+                        })
+
+                elif kind == "2to1":
+                    a1, a2 = old_block[i_start], old_block[i_end]
+                    b = new_block[j_start]
+                    sim = _similarity(f"{a1} {a2}".strip(), b)
+                    if _normalize_for_similarity(f"{a1} {a2}") != _normalize_for_similarity(b) and sim < minor_change_threshold and b.strip():
+                        line_new = j1 + j_start + 1
+                        human_rows.append(f"~ Ligne {line_new}. {b}")
+                        diff_json.append({
+                            "type": "replace",
+                            "line": line_new,
+                            "old_line": [i1 + i_start + 1, i1 + i_end + 1],
+                            "old_content": f"{a1} {a2}",
+                            "content": b,
+                            "similarity": float(sim),
+                            "note": "merge(2→1)"
+                        })
+
+            # 1) retire ce qui a été consommé par split/merge
+            old_rest_map = [k for k in range(len(old_block)) if k not in used_old]
+            new_rest_map = [k for k in range(len(new_block)) if k not in used_new]
+            old_rest = [old_block[k] for k in old_rest_map]
+            new_rest = [new_block[k] for k in new_rest_map]
+
+            # 2) aligne le reste 1<->1
+            matches, old_unmatched_rel, new_unmatched_rel = _align_block(old_rest, new_rest)
+
+            # remappe indices relatifs
+            remapped_matches = []
+            for i_rel2, j_rel2, sim in matches:
+                i_rel_orig = old_rest_map[i_rel2] if i_rel2 < len(old_rest_map) else None
+                j_rel_orig = new_rest_map[j_rel2] if j_rel2 < len(new_rest_map) else None
+                remapped_matches.append((i_rel_orig, j_rel_orig, sim))
+
+            old_unmatched = [old_rest_map[i] for i in old_unmatched_rel]
+            new_unmatched = [new_rest_map[j] for j in new_unmatched_rel]
+
+            # 3) EMIT REPLACE pour les paires appariées restantes (align 1↔1)
+            for i_rel, j_rel, sim in remapped_matches:
                 old_content = old_block[i_rel]
                 new_content = new_block[j_rel]
-                new_abs_line = j1 + j_rel + 1      # 1-based dans le nouveau texte
-                old_abs_line = i1 + i_rel + 1      # 1-based dans l’ancien texte
-
-                # Ne journalise pas si c'est un changement mineur
+                new_abs_line = j1 + j_rel + 1
+                old_abs_line = i1 + i_rel + 1
                 if _normalize_for_similarity(old_content) == _normalize_for_similarity(new_content):
-                    # équivalent “tolérant” → rien
                     continue
-
                 if sim < minor_change_threshold:
                     human_rows.append(f"~ Ligne {new_abs_line}. {new_content}")
                     diff_json.append({
@@ -141,9 +254,46 @@ def compute_diff(old_text: str,
                         "content": new_content,
                         "similarity": float(sim)
                     })
-                # sinon (sim >= seuil) → on considère que c'est mineur → pas de log
 
-            # 2) INSERT (nouvelles lignes non appariées)
+            # 3) tentative de re-pairing gourmand pour éviter DELETE+INSERT
+            re_pairs = []
+            if old_unmatched and new_unmatched:
+                cand = []
+                for i_rel in old_unmatched:
+                    for j_rel in new_unmatched:
+                        sim = _similarity(old_block[i_rel], new_block[j_rel])
+                        cand.append((sim, i_rel, j_rel))
+                cand.sort(reverse=True, key=lambda t: t[0])
+                used_o, used_n = set(), set()
+                for sim, i_rel, j_rel in cand:
+                    if i_rel in used_o or j_rel in used_n:
+                        continue
+                    used_o.add(i_rel)
+                    used_n.add(j_rel)
+                    re_pairs.append((i_rel, j_rel, sim))
+                old_unmatched = [i for i in old_unmatched if i not in used_o]
+                new_unmatched = [j for j in new_unmatched if j not in used_n]
+
+            # 4) EMIT REPLACE pour paires re-appariées
+            for i_rel, j_rel, sim in re_pairs:
+                old_content = old_block[i_rel]
+                new_content = new_block[j_rel]
+                new_abs_line = j1 + j_rel + 1
+                old_abs_line = i1 + i_rel + 1
+                if _normalize_for_similarity(old_content) == _normalize_for_similarity(new_content):
+                    continue
+                if sim < minor_change_threshold:
+                    human_rows.append(f"~ Ligne {new_abs_line}. {new_content}")
+                    diff_json.append({
+                        "type": "replace",
+                        "line": new_abs_line,
+                        "old_line": old_abs_line,
+                        "old_content": old_content,
+                        "content": new_content,
+                        "similarity": float(sim)
+                    })
+
+            # 5) INSERT pour les nouvelles lignes restantes
             for j_rel in new_unmatched:
                 new_content = new_block[j_rel]
                 if not new_content.strip():
@@ -156,14 +306,13 @@ def compute_diff(old_text: str,
                     "content": new_content
                 })
 
-            # 3) DELETE (anciennes lignes non appariées)
+            # 6) DELETE pour les anciennes lignes restantes
             for i_rel in old_unmatched:
                 old_content = old_block[i_rel]
                 if not old_content.strip():
                     continue
                 old_abs_line = i1 + i_rel + 1
-                human_rows.append(
-                    f"- Ancienne ligne {old_abs_line}. {old_content}")
+                human_rows.append(f"- Ancienne ligne {old_abs_line}. {old_content}")
                 diff_json.append({
                     "type": "delete",
                     "old_line": old_abs_line,
@@ -245,9 +394,13 @@ def clean_added_text_for_ner(text: str) -> str:
         if re.match(r"^\-\s*Ancienne\s+ligne\s+\d+\.", line, flags=re.IGNORECASE):
             continue
 
-        # Supprime uniquement le préfixe des lignes ajoutées
+        # Supprime les préfixes des lignes ajoutées / modifiées / supprimées
+        # Exemples de préfixes attendus: "+ Ligne 3. ", "- Ancienne ligne 2. ", "~ Ligne 5. "
+        # Nous voulons:
+        #  - ignorer complètement les lignes supprimées (déjà géré plus haut),
+        #  - enlever les préfixes + / ~ et retourner le reste nettoyé.
         new_line = re.sub(
-            r"^\+\s*Ligne\s+\d+\.\s*",
+            r"^[+~]\s*Ligne\s+\d+\.\s*",
             "",
             line,
             flags=re.IGNORECASE
