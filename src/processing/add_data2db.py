@@ -51,6 +51,11 @@ def add_data2db(image_path: str, db_path: str = DB_PATH):
             f"[SKIP] Aucun texte exploitable après normalisation pour {image_path}")
         return None
 
+    # consider literal empty-quoted results as empty (e.g. '""' or "''")
+    if cleaned_text.strip() in ('""', "''"):
+        print(f"[SKIP] Transcription nettoyée vide (literal quotes) pour {image_path}")
+        return None
+
     # 2) Cherche une note existante similaire
 
     similar_note_id = find_similar_note(
@@ -141,8 +146,8 @@ def add_audio2db(audio_path: str, transcription_brute: str, transcription_clean:
     is still handled by the DB via entity matching.
     """
     # Ensure we have some text
-    if not transcription_clean or not transcription_clean.strip():
-        print(f"[SKIP] audio {audio_path} has no cleaned transcription")
+    if not transcription_clean or not transcription_clean.strip() or transcription_clean.strip() in ('""', "''"):
+        print(f"[SKIP] audio {audio_path} has no cleaned transcription (empty or literal quotes)")
         return None
 
     # Prepare diff/texte_ajoute for audio: each audio is a single added line
