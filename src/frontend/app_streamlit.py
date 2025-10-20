@@ -260,8 +260,9 @@ for n in notes:
 
         if img_path:
             img = Image.open(img_path)
-            # Rotation de 90° dans le sens horaire
-            img = img.rotate(-90, expand=True)
+            # Forcer la rotation si l'image est en paysage
+            if img.width > img.height:
+                img = img.rotate(-90, expand=True)
             st.image(img, width='stretch', caption=os.path.basename(img_path))
         elif audio_path and os.path.exists(audio_path):
             st.audio(audio_path, format="audio/wav")
