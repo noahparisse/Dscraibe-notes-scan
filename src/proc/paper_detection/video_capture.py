@@ -15,7 +15,7 @@ from src.proc.paper_detection.image_preprocessing import preprocessed_image
 start = time.time()
 
 # Choix de la caméra
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(0)  # 0 pour la webcam par défaut, ou chemin vers une vidéo
 
 # Lancement de la webcam
 while True:
@@ -23,7 +23,6 @@ while True:
 
     # Vérification que l'image est bien capturée
     if not ret or img is None:
-        print("⚠️ Aucune image capturée. Vérifie la caméra ou l'index du périphérique.")
         continue  # on saute cette itération au lieu de planter
 
     possible_papers = shape_detector(img)

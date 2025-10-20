@@ -17,7 +17,7 @@ from backend.db import (
     find_similar_note 
 )
 from processing.mistral_ocr_llm import image_transcription
-from ner.spacy_model import extract_entities
+from ner.llm_extraction import extract_entities
 from utils.text_utils import has_meaningful_line, has_meaningful_text, compute_diff, is_htr_buggy, clean_added_text_for_ner
 from utils.image_utils import encode_image
 
@@ -49,6 +49,11 @@ def add_data2db(image_path: str, db_path: str = DB_PATH):
     if not cleaned_text or not cleaned_text.strip():
         print(
             f"[SKIP] Aucun texte exploitable après normalisation pour {image_path}")
+        return None
+
+    # consider literal empty-quoted results as empty (e.g. '""' or "''")
+    if cleaned_text.strip() in ('""', "''"):
+        print(f"[SKIP] Transcription nettoyée vide (literal quotes) pour {image_path}")
         return None
 
     # 2) Cherche une note existante similaire
@@ -141,10 +146,20 @@ def add_audio2db(audio_path: str, transcription_brute: str, transcription_clean:
     is still handled by the DB via entity matching.
     """
     # Ensure we have some text
-    if not transcription_clean or not transcription_clean.strip():
-        print(f"[SKIP] audio {audio_path} has no cleaned transcription")
-        return None
+    # Normalize transcription_clean: remove surrounding quotes if present
+    def strip_surrounding_quotes_local(s: str) -> str:
+        if s is None:
+            return s
+        s = s.strip()
+        while len(s) >= 2 and ((s[0] == s[-1] and s[0] in ('"', "'"))):
+            s = s[1:-1].strip()
+        return s
 
+    if not transcription_clean or not transcription_clean.strip() or transcription_clean.strip() in ('""', "''"):
+        print(f"[SKIP] audio {audio_path} has no cleaned transcription (empty or literal quotes)")
+        return None
+    transcription_clean = strip_surrounding_quotes_local(transcription_clean)
+    
     # Prepare diff/texte_ajoute for audio: each audio is a single added line
     diff_human = f"+ Ligne 1. {transcription_clean.strip()}"
     diff_json = [{"type": "insert", "line": 1, "content": transcription_clean.strip()}]
