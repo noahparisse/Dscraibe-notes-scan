@@ -31,6 +31,8 @@ from src.utils.text_utils import (
 from src.utils.image_utils import encode_image
 from src.image_similarity.orb_and_align import isSimilar
 
+AUD_COUNTER = 0
+TEXT_COUNTER = 0
 
 def add_data2db(image_path: str, db_path: str = DB_PATH):
     """
@@ -124,7 +126,9 @@ def add_data2db(image_path: str, db_path: str = DB_PATH):
 
     else:
         # nouvelle feuille
-        note_id = str(uuid.uuid4())
+        global TEXT_COUNTER
+        TEXT_COUNTER += 1
+        note_id = f"TEXT-{TEXT_COUNTER}"
         lines = [l for l in cleaned_text.splitlines() if l.strip()]
         diff_human = "\n".join(
             f"+ Ligne {i+1}. {l}" for i, l in enumerate(lines))
@@ -211,7 +215,9 @@ def add_audio2db(audio_path: str, transcription_brute: str, transcription_clean:
     cleaned_for_ner = clean_added_text_for_ner(diff_human)
     entities = extract_entities(cleaned_for_ner) if cleaned_for_ner else {}
 
-    note_id = str(uuid.uuid4())
+    global AUD_COUNTER
+    AUD_COUNTER += 1
+    note_id = f"AUD-{AUD_COUNTER}"
 
     raw = {
         "source": "audio-wav2vec2",

@@ -232,7 +232,7 @@ for n in notes:
         if n.get("note_id"):
             st.caption(f"note_id: {n['note_id']}")
         if n.get("evenement_id"):
-            st.caption(f"événement: {n['evenement_id'][:8]}...")
+            st.caption(f"événement: {n['evenement_id']}")
 
     # Colonne centre : Informations ajoutées
     with cols[1]:

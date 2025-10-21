@@ -5,7 +5,7 @@ import time
 import sqlite3
 import json
 from pathlib import Path
-import cv2
+import re
 
 # Ajoute la racine du projet au sys.path pour permettre les imports internes
 import sys
@@ -81,8 +81,9 @@ def insert_note_meta(meta: dict, img_path_proc: Optional[str] = None, db_path: s
 
     evenement_id = find_existing_event_id(entities_new, db_path)
     if evenement_id is None:
-        import uuid
-        evenement_id = str(uuid.uuid4())  # Nouveau groupe d'événement
+        last_id = get_last_event_number_from_db(db_path)  
+        nouvel_id = last_id + 1
+        evenement_id = f"EVT-{nouvel_id}"
 
     # Insertion de la note
     row = (
@@ -435,3 +436,30 @@ def find_existing_event_id(entities_new: Dict, db_path: str = DB_PATH) -> Option
 
     con.close()
     return None
+
+def get_last_event_number_from_db(db_path: str = DB_PATH) -> int:
+    """
+    Récupère le dernier numéro d'événement existant dans la base.
+    Si aucun événement n'existe, renvoie 0.
+    """
+    con = sqlite3.connect(db_path)
+    con.row_factory = sqlite3.Row
+    cur = con.cursor()
+    cur.execute("""
+        SELECT DISTINCT evenement_id 
+        FROM notes_meta
+        WHERE evenement_id IS NOT NULL
+    """)
+    rows = cur.fetchall()
+    con.close()
+    
+    max_num = 0
+    for row in rows:
+        evt_id = row["evenement_id"]
+        if evt_id:
+            match = re.search(r"EVT-(\d+)", evt_id)
+            if match:
+                num = int(match.group(1))
+                if num > max_num:
+                    max_num = num
+    return max_num
