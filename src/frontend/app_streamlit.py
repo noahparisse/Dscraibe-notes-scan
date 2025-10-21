@@ -372,10 +372,10 @@ for n in notes:
         with detail_cols[0]:
 
             if img_path:
-                st.markdown(f"**Transcription complète")
+                st.markdown(f"**TRANSCRIPTION COMPLETE**")
             
             elif audio_path and os.path.exists(audio_path):
-                st.markdown(f"**Transcription complète :**  **{evaluation_fiabilite(audio_score)}** (Score = {audio_score})")
+                st.markdown(f"**TRANSCRIPTION COMPLETE:**  **{evaluation_fiabilite(audio_score)}** (Score = {audio_score})")
 
             st.markdown("**Transcription brute**")
             st.markdown(f"```\n{n.get('transcription_brute') or '—'}\n```")
