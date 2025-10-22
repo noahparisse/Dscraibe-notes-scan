@@ -1,6 +1,7 @@
 import json
 import uuid
 import sys
+from difflib import SequenceMatcher
 
 # Ajoute la racine du projet au sys.path pour permettre les imports internes
 import sys
@@ -9,8 +10,8 @@ REPO_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if REPO_PATH not in sys.path:
     sys.path.insert(0, REPO_PATH)
 
-# from src.processing.mistral_ocr_llm import image_transcription
-from src.processing.teklia_ocr_llm import image_transcription
+from src.processing.mistral_ocr_llm import image_transcription
+#from src.processing.teklia_ocr_llm import image_transcription
 
 from src.backend.db import (
     DB_PATH,
@@ -82,14 +83,32 @@ def add_data2db(image_path: str, db_path: str = DB_PATH):
     except Exception:
         last_texts = {}
 
+
+    # 1) Cas des notes courtes 
+
+
+
     for nid, prev_text in (last_texts or {}).items():
         s_prev = reflow_sentences(prev_text or "", width=80)
         s_new = reflow_sentences(cleaned_text or "", width=80)
         score_info = score_and_categorize_texts(s_prev, s_new)
-        if score_info.get("score", 0.0) > 0.95:
-            print(f"[SKIP] Similar existing note {nid} (score={score_info['score']}) — insertion skipped for {image_path}")
-            return None
 
+        # print(f"""score_F1_Jacquard={score_info['score']} \n
+        #       score_seqm={SequenceMatcher(None, s_prev, s_new).ratio()} \n
+        #             Note de la BDD \n
+        #             {len(s_prev)}]{s_prev} \n
+        #             est très similaire à la nouvelle note \n
+        #             {len(s_new)}{s_new}""")
+
+        if len(s_prev) - len(s_new) < 20 and len(s_new) - len(s_prev) < 20 and SequenceMatcher(None, s_prev, s_new).ratio() > 0.5 :
+            print(f"""Brigade anti-répétition : note similaire trouvée en BDD avec score : {SequenceMatcher(None, s_prev, s_new).ratio()} \n
+                  Note de la BDD \n
+             {len(s_prev)}]{s_prev} \n
+             est très similaire à la nouvelle note \n
+             {len(s_new)}{s_new}""")
+            None
+    
+    
 
     diff_human = ""
     diff_json = []
