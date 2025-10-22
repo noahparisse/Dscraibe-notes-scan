@@ -35,8 +35,9 @@ def ensure_db(db_path: str = DB_PATH):
         transcription_brute     TEXT,
         transcription_clean     TEXT,
         texte_ajoute            TEXT,
-    img_path_proc           TEXT,
-    raw_json                TEXT,
+        confidence_score REAL DEFAULT 0.0,    
+        img_path_proc           TEXT,
+        raw_json                TEXT,
 
         -- Colonnes pour entités extraites
         entite_GEO              TEXT,
@@ -91,6 +92,7 @@ def insert_note_meta(meta: dict, img_path_proc: Optional[str] = None, db_path: s
         meta.get("transcription_brute"),
         meta.get("transcription_clean"),
         meta.get("texte_ajoute"),
+        meta.get("confidence_score"),
         img_path_proc,
             meta.get("raw_json") or json.dumps(
             meta, ensure_ascii=False),  
@@ -111,14 +113,14 @@ def insert_note_meta(meta: dict, img_path_proc: Optional[str] = None, db_path: s
     cur = con.cursor()
     cur.execute("""
         INSERT INTO notes_meta (
-            ts, note_id, transcription_brute, transcription_clean, texte_ajoute,
+            ts, note_id, transcription_brute, transcription_clean, texte_ajoute, confidence_score,
             img_path_proc, raw_json,
             entite_GEO, entite_ACTOR, entite_DATETIME, entite_EVENT,
             entite_INFRASTRUCTURE, entite_OPERATING_CONTEXT,
             entite_PHONE_NUMBER, entite_ELECTRICAL_VALUE,
             evenement_id
         )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, row)
 
     con.commit()
@@ -134,6 +136,7 @@ def list_notes(limit: int = 20, db_path: str = DB_PATH) -> List[Dict]:
     cur = con.cursor()
     cur.execute("""
     SELECT id, ts, note_id, transcription_brute, transcription_clean, texte_ajoute, img_path_proc,
+               confidence_score,
                entite_GEO, entite_ACTOR, entite_DATETIME, entite_EVENT,
                entite_INFRASTRUCTURE, entite_OPERATING_CONTEXT,
                entite_PHONE_NUMBER, entite_ELECTRICAL_VALUE,
@@ -367,6 +370,7 @@ def list_notes_by_note_id(note_id: str, db_path: str = DB_PATH, limit: int = 50)
     cur = con.cursor()
     cur.execute("""
     SELECT id, ts, note_id, transcription_brute, transcription_clean, texte_ajoute, img_path_proc,
+               confidence_score,
                entite_GEO, entite_ACTOR, entite_DATETIME, entite_EVENT,
                entite_INFRASTRUCTURE, entite_OPERATING_CONTEXT,
                entite_PHONE_NUMBER, entite_ELECTRICAL_VALUE,
@@ -391,6 +395,7 @@ def list_notes_by_evenement_id(evenement_id: str, db_path: str = DB_PATH, limit:
     cur = con.cursor()
     cur.execute("""
     SELECT id, ts, note_id, transcription_brute, transcription_clean, texte_ajoute, img_path_proc,
+               confidence_score,
                entite_GEO, entite_ACTOR, entite_DATETIME, entite_EVENT,
                entite_INFRASTRUCTURE, entite_OPERATING_CONTEXT,
                entite_PHONE_NUMBER, entite_ELECTRICAL_VALUE,

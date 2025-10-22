@@ -50,7 +50,7 @@ def fetch_notes(limit: int = 50,
                 ts_to: Optional[int] = None,
                 q: str = "") -> List[Dict[str, Any]]:
     sql = """
-    SELECT id, ts, note_id, transcription_brute, transcription_clean, texte_ajoute,
+    SELECT id, ts, note_id, transcription_brute, transcription_clean, texte_ajoute, confidence_score,
            img_path_proc,
                entite_GEO, entite_ACTOR, entite_DATETIME, entite_EVENT,
                entite_INFRASTRUCTURE, entite_OPERATING_CONTEXT,
@@ -279,7 +279,10 @@ st.markdown(
 )
 
 # Affichage en cartes
-for n in notes:  
+for n in notes:
+
+    score_confiance = n.get("confidence_score")
+
     st.divider()
     
     # Colonnes principales : meta, résumé et entités
@@ -367,15 +370,20 @@ for n in notes:
                 if trans == d.get("transcription_clean"):
                     audio_path = tmp_dir + "/" + d.get("filename")
                     audio_score = d.get("score")
+                    try:
+                        audio_score = float(audio_score) if audio_score is not None else None
+                    except Exception:
+                        audio_score = None
 
         
         with detail_cols[0]:
 
             if img_path:
-                st.markdown(f"**TRANSCRIPTION COMPLETE**")
-            
+                st.markdown(f"**Fiabilité de la transcription:**  **{evaluation_fiabilite(score_confiance if score_confiance is not None else 0.0)}** (Score = {round(score_confiance,2)})")
+
+
             elif audio_path and os.path.exists(audio_path):
-                st.markdown(f"**TRANSCRIPTION COMPLETE:**  **{evaluation_fiabilite(audio_score)}** (Score = {audio_score})")
+                st.markdown(f"**Fiabilité de la transcription:**  **{evaluation_fiabilite(audio_score if audio_score is not None else 0.0)}** (Score = {audio_score})")
 
             st.markdown("**Transcription brute**")
             st.markdown(f"```\n{n.get('transcription_brute') or '—'}\n```")

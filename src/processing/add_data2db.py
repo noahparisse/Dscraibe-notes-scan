@@ -9,7 +9,9 @@ REPO_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if REPO_PATH not in sys.path:
     sys.path.insert(0, REPO_PATH)
 
-from src.processing.mistral_ocr_llm import image_transcription
+# from src.processing.mistral_ocr_llm import image_transcription
+from src.processing.teklia_ocr_llm import image_transcription
+
 from src.backend.db import (
     DB_PATH,
     insert_note_meta,
@@ -17,7 +19,6 @@ from src.backend.db import (
     find_similar_note ,
     find_similar_image
 )
-from src.processing.mistral_ocr_llm import image_transcription
 from src.ner.llm_extraction import extract_entities
 from src.utils.text_utils import (
     has_meaningful_line,
@@ -52,11 +53,8 @@ def add_data2db(image_path: str, db_path: str = DB_PATH):
         print("L'image captée a déjà été enregistrée en BBD.")
         return None
 
-    # 0) Encodage de l'image en base64 (pour Mistral OCR)
-    encoded_image = encode_image(image_path)
-
     # 1) OCR + normalisation
-    ocr_text, cleaned_text = image_transcription(encoded_image)
+    ocr_text, cleaned_text, confidence_score = image_transcription(image_path)
 
     # >>> Pare-feu avant toute logique de DB
     buggy, reason = is_htr_buggy(ocr_text, cleaned_text)
@@ -153,6 +151,7 @@ def add_data2db(image_path: str, db_path: str = DB_PATH):
         "transcription_brute": ocr_text,        # <— OCR brut
         "transcription_clean": cleaned_text,     # <— texte normalisé stable
         "texte_ajoute": diff_human,
+        "confidence_score": confidence_score,
         "img_path_proc": image_path,
         "raw_json": json.dumps(raw, ensure_ascii=False),
         "entite_GEO": json.dumps(entities.get("GEO", []), ensure_ascii=False),
@@ -228,6 +227,7 @@ def add_audio2db(audio_path: str, transcription_brute: str, transcription_clean:
         "transcription_brute": transcription_brute,
         "transcription_clean": transcription_clean,
         "texte_ajoute": diff_human,
+        "confidence_score": 0.5,
         "img_path_proc": None,
         "raw_json": json.dumps(raw, ensure_ascii=False),
         "entite_GEO": json.dumps(entities.get("GEO", []), ensure_ascii=False),
