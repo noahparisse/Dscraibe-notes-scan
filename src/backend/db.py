@@ -1,4 +1,3 @@
-# Ajoute le dossier racine du projet au sys.path pour permettre les imports internes
 from difflib import SequenceMatcher
 from typing import Optional, List, Dict, Tuple
 import time
