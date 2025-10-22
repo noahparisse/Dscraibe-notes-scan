@@ -54,7 +54,7 @@ def fetch_notes(limit: int = 50,
            img_path_proc,
                entite_GEO, entite_ACTOR, entite_DATETIME, entite_EVENT,
                entite_INFRASTRUCTURE, entite_OPERATING_CONTEXT,
-               entite_PHONE_NUMBER, entite_ELECTRICAL_VALUE,
+               entite_PHONE_NUMBER, entite_ELECTRICAL_VALUE, entite_ABBREVIATION_UNKNOWN,
                evenement_id
         FROM notes_meta
         WHERE 1=1
@@ -223,7 +223,7 @@ with st.sidebar:
         entity_columns = [
             "entite_GEO", "entite_DATETIME", "entite_EVENT", "entite_ACTOR",
             "entite_INFRASTRUCTURE", "entite_OPERATING_CONTEXT",
-            "entite_PHONE_NUMBER", "entite_ELECTRICAL_VALUE"
+            "entite_PHONE_NUMBER", "entite_ELECTRICAL_VALUE", "entite_ABBREVIATION_UNKNOWN"
         ]
 
         # Pour chaque terme, on crée un OR entre toutes les colonnes entités
@@ -319,8 +319,9 @@ for n in notes:
             "OPERATING_CONTEXT": parse_entities_field("entite_OPERATING_CONTEXT"),
             "PHONE_NUMBER": parse_entities_field("entite_PHONE_NUMBER"),
             "ELECTRICAL_VALUE": parse_entities_field("entite_ELECTRICAL_VALUE"),
+            "ABBREVIATION_UNKNOWN": parse_entities_field("entite_ABBREVIATION_UNKNOWN"),
         }
-
+        
         entity_colors = {
             "GEO": "#F5A6A7",
             "ACTOR": "#7FB3D5",
@@ -330,6 +331,7 @@ for n in notes:
             "OPERATING_CONTEXT": "#C39BD3",
             "PHONE_NUMBER": "#7F8C8D",
             "ELECTRICAL_VALUE": "#F7A8D1",
+            "ABBREVIATION_UNKNOWN": "#FE6666",
         }
 
 
