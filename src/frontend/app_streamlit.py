@@ -117,17 +117,6 @@ def toggle_pause():
 def evaluation_fiabilite(score: float) -> str:
     """
     Retourne un niveau de fiabilité textuel selon un score de confiance Whisper.
-
-    Paramètres :
-        score (float) : score de confiance compris entre 0 et 1.
-
-    Retourne :
-        str : Niveau de fiabilité parmi :
-              - 'Très fiable'   : score >= 0.90
-              - 'Fiable'        : 0.75 <= score < 0.90
-              - 'Moyennement fiable' : 0.60 <= score < 0.75
-              - 'Peu fiable'    : 0.40 <= score < 0.60
-              - 'Pas fiable'    : score < 0.40
     """
 
     if score >= 0.90:
@@ -146,6 +135,14 @@ def evaluation_fiabilite(score: float) -> str:
 # --- UI ---
 st.set_page_config(page_title=PAGE_TITLE, layout="wide")
 st.title(PAGE_TITLE)
+
+
+# --- AJOUT DU BOUTON DE NAVIGATION ---
+# Placez ce bloc où vous souhaitez voir le bouton
+if st.button("Aller à la nouvelle page"):
+    st.switch_page("pages/nouvelle_page.py") # Chemin vers votre nouvelle page
+# ------------------------------------
+
 
 cfg = load_config()
 etat = "▶️ En lecture (True)" if cfg["pause"] else "⏸️ En pause (False)"
@@ -265,7 +262,6 @@ elif selected_note_id == "(toutes)":
 else:
     notes = list_notes_by_note_id(selected_note_id, limit=limit)
 
-
 # Auto-refresh léger
 if REFRESH_SECONDS > 0:
     st.query_params["_"] = str(int(time.time() // REFRESH_SECONDS))
@@ -278,160 +274,177 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+with open("src/frontend/log.txt", "w") as f:  
+    f.write("Nouveau contenu du log.\n\n")
+
 # Affichage en cartes
 for n in notes:  
     st.divider()
-    
     # Colonnes principales : meta, résumé et entités
     cols = st.columns([1, 3, 2])
 
-    # Colonne gauche : méta
-    with cols[0]:
-        st.markdown(f"**ID:** {n['id']}")
-        st.markdown(f"**TS:** {ts_human(n['ts'])}")
-        if n.get("note_id"):
-            st.caption(f"note_id: {n['note_id']}")
-        if n.get("evenement_id"):
-            st.caption(f"événement: {n['evenement_id']}")
-
-    # Colonne centre : Informations ajoutées
-    with cols[1]:
-        st.markdown("**Informations ajoutées**")
-        st.markdown(f"```\n{n.get('texte_ajoute') or '—'}\n```")
-        
-    # Colonne droite : entités
-    with cols[2]:
-        def parse_entities_field(field_name: str):
-            val = n.get(field_name)
-            if val:
-                try:
-                    return json.loads(val)
-                except:
-                    return []
-            return []
-
-        entities_display = {
-            "GEO": parse_entities_field("entite_GEO"),
-            "ACTOR": parse_entities_field("entite_ACTOR"),
-            "DATETIME": parse_entities_field("entite_DATETIME"),
-            "EVENT": parse_entities_field("entite_EVENT"),
-            "INFRASTRUCTURE": parse_entities_field("entite_INFRASTRUCTURE"),
-            "OPERATING_CONTEXT": parse_entities_field("entite_OPERATING_CONTEXT"),
-            "PHONE_NUMBER": parse_entities_field("entite_PHONE_NUMBER"),
-            "ELECTRICAL_VALUE": parse_entities_field("entite_ELECTRICAL_VALUE"),
-            "ABBREVIATION_UNKNOWN": parse_entities_field("entite_ABBREVIATION_UNKNOWN"),
-        }
-        
-        entity_colors = {
-            "GEO": "#F5A6A7",
-            "ACTOR": "#7FB3D5",
-            "DATETIME": "#88D8C0",
-            "EVENT": "#FFD699",
-            "INFRASTRUCTURE": "#FFF0A6",
-            "OPERATING_CONTEXT": "#C39BD3",
-            "PHONE_NUMBER": "#7F8C8D",
-            "ELECTRICAL_VALUE": "#F7A8D1",
-            "ABBREVIATION_UNKNOWN": "#FE6666",
-        }
-
-
-        all_entities_html = []
-        for label, values in entities_display.items():
-            for v in values:
-                v_display = v if len(v) <= 30 else v[:27] + "…"
-                all_entities_html.append(
-                    f'<span style="background-color:{entity_colors[label]}; color:#000; padding:3px 8px; border-radius:5px; margin:2px; display:inline-block;">{v_display}</span>'
-                )
-        if all_entities_html:
-            st.markdown(" ".join(all_entities_html), unsafe_allow_html=True)
-        else:
-            st.caption("Aucune entité")
-
-    # --- Menu déroulant pour détails complets ---
-    with st.expander("Voir plus de détails et fichiers"):
-        # Colonnes dans l'expander
-        detail_cols = st.columns([2,2])
-        
-        # Image ou audio
-        img_path = safe_image(n.get("img_path_proc"))
+    img_path = safe_image(n.get("img_path_proc"))
+    trans = n.get("transcription_clean")
     
-        trans = n.get("transcription_clean")
-        
-        tmp_dir = os.path.join(os.path.join(os.path.dirname(__file__), "../../src/transcription/tmp"))
-        audio_json_path = os.path.join(tmp_dir, "transcriptions_log.json")
-        
-        audio_path = None
-        audio_score = None
-        if os.path.exists(audio_json_path):
-            with open(audio_json_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            for d in data:
-                if trans == d.get("transcription_clean"):
-                    audio_path = tmp_dir + "/" + d.get("filename")
-                    audio_score = d.get("score")
-
-        
-        with detail_cols[0]:
-
-            if img_path:
-                st.markdown(f"**TRANSCRIPTION COMPLETE**")
+    tmp_dir = os.path.join(os.path.join(os.path.dirname(__file__), "../../src/transcription/tmp"))
+    audio_json_path = os.path.join(tmp_dir, "transcriptions_log.json")
+    
+    audio_path = None
+    audio_score = None
+    audio_start = None
+    if os.path.exists(audio_json_path):
+        with open(audio_json_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        for d in data:
+            if trans == d.get("transcription_clean"):
+                audio_path = tmp_dir + "/" + d.get("filename")
+                audio_score = d.get("score")
+                audio_start = d.get("start_time")
+                
+    if audio_score <0.2:
+            continue
+    else :
+        # Colonne gauche : méta
+        with cols[0]:
+            st.markdown(f"**ID:** {n['id']}")
             
-            elif audio_path and os.path.exists(audio_path):
-                st.markdown(f"**TRANSCRIPTION COMPLETE:**  **{evaluation_fiabilite(audio_score)}** (Score = {audio_score})")
+            if audio_path and os.path.exists(audio_path):
+                st.markdown(f"**TS:** {audio_start}")
+                with open("src/frontend/log.txt", "a") as f:  
+                    f.write(f"{audio_start}\n")
 
-            st.markdown("**Transcription brute**")
-            st.markdown(f"```\n{n.get('transcription_brute') or '—'}\n```")
-            st.markdown("**Transcription nettoyée**")
-            st.markdown(f"```\n{n.get('transcription_clean') or '—'}\n```")
+            elif img_path:
+                st.markdown(f"**TS:** {ts_human(n['ts'])}")
+                with open("src/frontend/log.txt", "a") as f:  
+                    f.write(f"{ts_human(n['ts'])}\n")
+
+            if n.get("note_id"):
+                st.caption(f"note_id: {n['note_id']}")
+            if n.get("evenement_id"):
+                st.caption(f"événement: {n['evenement_id']}")
+
+        # Colonne centre : Informations ajoutées
+        with cols[1]:
+            st.markdown("**Informations ajoutées**")
+            st.markdown(f"```\n{n.get('texte_ajoute') or '—'}\n```")
+            with open("src/frontend/log.txt", "a") as f:  # "a" = append (ajouter à la fin du fichier)
+                f.write(f"{n.get('texte_ajoute') or '—'}\n")
             
-        with detail_cols[1]:
+        # Colonne droite : entités
+        with cols[2]:
+            def parse_entities_field(field_name: str):
+                val = n.get(field_name)
+                if val:
+                    try:
+                        return json.loads(val)
+                    except:
+                        return []
+                return []
 
-            if img_path:
-                img = Image.open(img_path)
-                if img.width > img.height:
-                    img = img.rotate(-90, expand=True)
-                st.image(img, width='stretch', caption=os.path.basename(img_path))
-            elif audio_path and os.path.exists(audio_path):
-                st.audio(audio_path, format="audio/wav")
-                st.caption(os.path.basename(audio_path))
+            entities_display = {
+                "GEO": parse_entities_field("entite_GEO"),
+                "ACTOR": parse_entities_field("entite_ACTOR"),
+                "DATETIME": parse_entities_field("entite_DATETIME"),
+                "EVENT": parse_entities_field("entite_EVENT"),
+                "INFRASTRUCTURE": parse_entities_field("entite_INFRASTRUCTURE"),
+                "OPERATING_CONTEXT": parse_entities_field("entite_OPERATING_CONTEXT"),
+                "PHONE_NUMBER": parse_entities_field("entite_PHONE_NUMBER"),
+                "ELECTRICAL_VALUE": parse_entities_field("entite_ELECTRICAL_VALUE"),
+            }
+
+            entity_colors = {
+                "GEO": "#F5A6A7",
+                "ACTOR": "#7FB3D5",
+                "DATETIME": "#88D8C0",
+                "EVENT": "#FFD699",
+                "INFRASTRUCTURE": "#FFF0A6",
+                "OPERATING_CONTEXT": "#C39BD3",
+                "PHONE_NUMBER": "#7F8C8D",
+                "ELECTRICAL_VALUE": "#F7A8D1",
+            }
+
+
+            all_entities_html = []
+            for label, values in entities_display.items():
+                for v in values:
+                    v_display = v if len(v) <= 30 else v[:27] + "…"
+                    all_entities_html.append(
+                        f'<span style="background-color:{entity_colors[label]}; color:#000; padding:3px 8px; border-radius:5px; margin:2px; display:inline-block;">{v_display}</span>'
+                    )
+            if all_entities_html:
+                st.markdown(" ".join(all_entities_html), unsafe_allow_html=True)
             else:
-                st.caption("Pas d'image/audio disponible")
+                st.caption("Aucune entité")
 
-    # ----- Actions -----
-    st.markdown("**Actions**")
-    a1, a2, _ = st.columns([1, 1, 4])
+        # --- Menu déroulant pour détails complets ---
+        with st.expander("Voir plus de détails et fichiers"):
+            # Colonnes dans l'expander
+            detail_cols = st.columns([2,2])
+            
+            
+            with detail_cols[0]:
 
-    # Supprimer une entrée
-    with a1:
-        with st.popover("🗑️ Supprimer cette entrée"):
-            st.caption(
-                "Supprime uniquement CETTE ligne (id). Opération irréversible.")
-            confirm1 = st.checkbox(
-                f"Confirmer suppression id={n['id']}", key=f"del_id_ck_{n['id']}")
-            if st.button("Supprimer", key=f"del_id_btn_{n['id']}", disabled=not confirm1):
-                deleted = delete_entry_by_id(int(n["id"]), db_path=DB_PATH)
-                st.success(f"{deleted} entrée supprimée (id={n['id']}).")
-                st.rerun()
+                if img_path:
+                    st.markdown(f"**TRANSCRIPTION COMPLETE**")
+                
+                elif audio_path and os.path.exists(audio_path):
+                    st.markdown(f"**TRANSCRIPTION COMPLETE:**  **{evaluation_fiabilite(audio_score)}** (Score = {audio_score})")
 
-    # Supprimer toute une note_id
-    with a2:
-        disabled_thread = not n.get("note_id")
-        with st.popover("🗑️ Supprimer TOUTE la note_id", disabled=disabled_thread):
-            if disabled_thread:
-                st.caption("Pas de note_id pour cette entrée.")
-            else:
+                st.markdown("**Transcription brute**")
+                st.markdown(f"```\n{n.get('transcription_brute') or '—'}\n```")
+                st.markdown("**Transcription nettoyée**")
+                st.markdown(f"```\n{n.get('transcription_clean') or '—'}\n```")
+                
+            with detail_cols[1]:
+
+                if img_path:
+                    img = Image.open(img_path)
+                    if img.width > img.height:
+                        img = img.rotate(-90, expand=True)
+                    st.image(img, width='stretch', caption=os.path.basename(img_path))
+                elif audio_path and os.path.exists(audio_path):
+                    st.audio(audio_path, format="audio/wav")
+                    st.caption(os.path.basename(audio_path))
+                else:
+                    st.caption("Pas d'image/audio disponible")
+
+        # ----- Actions -----
+        st.markdown("**Actions**")
+        a1, a2, _ = st.columns([1, 1, 4])
+
+        # Supprimer une entrée
+        with a1:
+            with st.popover("🗑️ Supprimer cette entrée"):
                 st.caption(
-                    f"Supprime toutes les entrées de note_id={n['note_id']}. Opération irréversible.")
-                confirm2 = st.checkbox(
-                    f"Confirmer suppression note_id={n['note_id']}", key=f"del_thread_ck_{n['id']}")
-                if st.button("Supprimer tout", key=f"del_thread_btn_{n['id']}", disabled=not confirm2):
-                    deleted = delete_thread_by_note_id(
-                        n["note_id"], db_path=DB_PATH)
-                    st.success(
-                        f"{deleted} entrées supprimées (note_id={n['note_id']}).")
+                    "Supprime uniquement CETTE ligne (id). Opération irréversible.")
+                confirm1 = st.checkbox(
+                    f"Confirmer suppression id={n['id']}", key=f"del_id_ck_{n['id']}")
+                if st.button("Supprimer", key=f"del_id_btn_{n['id']}", disabled=not confirm1):
+                    deleted = delete_entry_by_id(int(n["id"]), db_path=DB_PATH)
+                    st.success(f"{deleted} entrée supprimée (id={n['id']}).")
                     st.rerun()
 
-# (Section audio séparée supprimée — les audios sont affichés dans la liste principale via raw_json.audio_path)
+        # Supprimer toute une note_id
+        with a2:
+            disabled_thread = not n.get("note_id")
+            with st.popover("🗑️ Supprimer TOUTE la note_id", disabled=disabled_thread):
+                if disabled_thread:
+                    st.caption("Pas de note_id pour cette entrée.")
+                else:
+                    st.caption(
+                        f"Supprime toutes les entrées de note_id={n['note_id']}. Opération irréversible.")
+                    confirm2 = st.checkbox(
+                        f"Confirmer suppression note_id={n['note_id']}", key=f"del_thread_ck_{n['id']}")
+                    if st.button("Supprimer tout", key=f"del_thread_btn_{n['id']}", disabled=not confirm2):
+                        deleted = delete_thread_by_note_id(
+                            n["note_id"], db_path=DB_PATH)
+                        st.success(
+                            f"{deleted} entrées supprimées (note_id={n['note_id']}).")
+                        st.rerun()
+
+
+
+
 
 # Rafraîchissement automatique
 if REFRESH_SECONDS > 0:
