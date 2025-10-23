@@ -279,7 +279,7 @@ with open("src/frontend/log.txt", "w") as f:
 
 # Affichage en cartes
 for n in notes:  
-    st.divider()
+    
     # Colonnes principales : meta, résumé et entités
     cols = st.columns([1, 3, 2])
 
@@ -303,6 +303,7 @@ for n in notes:
                 
 
     if audio_score > 0.3 :
+        st.divider()
         # Colonne gauche : méta
         with cols[0]:
             st.markdown(f"**ID:** {n['id']}")
