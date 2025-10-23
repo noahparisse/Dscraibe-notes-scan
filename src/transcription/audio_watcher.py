@@ -32,7 +32,7 @@ PAUSE = True
 if __name__ == "__main__":
     try:
 
-        record_duration = 30
+        record_duration = 20
         stop_event = threading.Event()
         device_index = 0
         enregistrement_thread = threading.Thread(target = record_loop, args=(record_duration, stop_event, device_index))
