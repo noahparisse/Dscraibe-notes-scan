@@ -7,6 +7,41 @@ load_dotenv()
 api_key = os.getenv("MISTRAL_API_KEY")
 client = Mistral(api_key=api_key)
 
+abreviations = [
+    "CNPE", "ACR", "NIPC", "CCO", "CEX", "RDCR", "RADA", "TST",
+    "RACR", "RDCR", "TIR", "PO", "RSD", "SUAV", "MNV", "PF", "CSS",
+    "GEH", "PDM", "SMACC", "HO", "BR", "GT", "TST", "CCO", "FDE",
+    "DIFFB", "RADA", "TR", "RA", "CTS", "CEX", "COSE", "COSE-P",
+    "SNCF", "ABC", "TRX", "VPL", "N-1"
+]
+
+
+villes_equivalences = [
+    "Guérande",
+    "Carquefou",
+    "L'Aigle",
+    "Deauville",
+    "Beaujolais",
+    "Stanway",
+    "Charles",
+    "Fermière",
+    "Charly",
+    "d'Epeautre",
+    "Rennes",
+    "Distrait",
+    "Flic-Flac",
+    "Fiort",
+    "Larcène",
+    "Vones et Auveau",
+    "Chaussay",
+    "Tabroderie",
+    "Marmaille",
+    "Marnage Fontaine",
+    "Tripette",
+    "Saint-Roland"
+]
+
+
 def nettoyer_transcription_audio(texte: str) -> str:
     """
     Nettoie un texte brut issu d'une transcription audio.
@@ -39,19 +74,12 @@ RÈGLES DE CORRECTION :
    - Ne pas développer les abréviations.  
    - Corrige les variantes proches vers la forme officielle.  
    - Liste des abréviations à respecter :  
-     "RACR, RDCR, TIR, PO, RSD, SUAV, MNV, PF, CSS, GEH, PDM, SMACC, HO, BR, GT, TST, CCO, FDE, DIFFB, RADA, TR, RA, CTS, CEX, COSE, COSE-P, SNCF, ABC, TRX, VPL, N-1"
+     {abreviations}
 
 
 8) **Noms de villes françaises** :  
    - Corrige les noms de villes mal transcrits vers leur forme correcte officielle.  
-   Exemples :  
-     "parie" → "Paris"  
-     "lion" → "Lyon"  
-     "gre noble" → "Grenoble"  
-     "nant" → "Nantes"  
-     "cean" → "Caen"  
-     "cher bour" → "Cherbourg"  
-     "vanne" → "Vannes"  
+     {villes_equivalences}
 
 9) **Formats déterministes** :
    - Heures : “16 h” ou “16h” → “16h”.  

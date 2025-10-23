@@ -16,10 +16,44 @@ import whisper
 
 from nettoyage_audio import nettoyer_transcription_audio
 
+abreviations = [
+    "CNPE", "ACR", "NIPC", "CCO", "CEX", "RDCR", "RADA", "TST",
+    "RACR", "RDCR", "TIR", "PO", "RSD", "SUAV", "MNV", "PF", "CSS",
+    "GEH", "PDM", "SMACC", "HO", "BR", "GT", "TST", "CCO", "FDE",
+    "DIFFB", "RADA", "TR", "RA", "CTS", "CEX", "COSE", "COSE-P",
+    "SNCF", "ABC", "TRX", "VPL", "N-1"
+]
+
+
+villes_equivalences = [
+    "Guérande",
+    "Carquefou",
+    "L'Aigle",
+    "Deauville",
+    "Beaujolais",
+    "Stanway",
+    "Charles",
+    "Fermière",
+    "Charly",
+    "d'Epeautre",
+    "Rennes",
+    "Distrait",
+    "Flic-Flac",
+    "Fiort",
+    "Larcène",
+    "Vones et Auveau",
+    "Chaussay",
+    "Tabroderie",
+    "Marmaille",
+    "Marnage Fontaine",
+    "Tripette",
+    "Saint-Roland"
+]
+
 
 model = whisper.load_model("large-v3-turbo")
 
-def transcribe_whisper_clean(audio_path, prompt="Abréviations officielles (ne pas développer ; corrige variantes proches vers la forme officielle): RACR, RDCR, TIR, PO, RSD, SUAV, MNV, PF, CSS, GEH, PDM, SMACC, HO, BR, GT, TST, CCO, FDE, DIFFB, RADA, TR, RA, CTS, CEX, COSE, COSE-P, SNCF, ABC, TRX, VPL, N-1", pause=True):
+def transcribe_whisper_clean(audio_path, prompt=f"Abréviations officielles (ne pas développer ; corrige variantes proches vers la forme officielle): {abreviations}, Noms de villes (utiliser la graphie officielle ; corriger variantes et fautes) : {villes_equivalences}", pause=True):
     """
     Transcrit un fichier audio en texte à l’aide d’un modèle Whisper.
 
