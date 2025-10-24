@@ -1,15 +1,11 @@
-from abbreviations import KNOWN_ABBREVIATIONS
-from city import KNOWN_CITY
-from name import KNOWN_NAMES
-
-
-WHISPER_PROMPT = f"""
--Abréviations officielles (ne pas développer ; corrige variantes proches vers la forme officielle) : {KNOWN_ABBREVIATIONS},
--Noms de villes (utiliser la graphie officielle ; corriger variantes et fautes) : {KNOWN_CITY},
--Noms de personnes (utiliser la graphie correcte ; corriger variantes et fautes) : {KNOWN_NAMES}
+WHISPER_PROMPT = """
+- Abréviations officielles (ne pas développer ; corrige variantes proches vers la forme officielle) : {KNOWN_ABBREVIATIONS},
+- Noms de villes (utiliser la graphie officielle ; corriger variantes et fautes) : {KNOWN_CITY},
+- Noms de personnes (utiliser la graphie correcte ; corriger variantes et fautes) : {KNOWN_NAMES}
 """
 
-MISTRAL_CLEAN_PROMPT=f"""Tu es un assistant chargé de corriger légèrement un texte issu d’une transcription audio.
+
+MISTRAL_CLEAN_PROMPT="""Tu es un assistant chargé de corriger légèrement un texte issu d’une transcription audio.
 
 RÈGLES DE CORRECTION :
 

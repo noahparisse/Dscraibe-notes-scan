@@ -13,8 +13,6 @@ import threading
 # To list available audio input devices :
 # python3 -m sounddevice
 
-
-
 def record_audio_segments(duration, stop_event, device=0,  bruit_reduction=True, samplerate=16000):
     """
     Continuously records consecutive audio segments and saves them in a temporary folder.
@@ -36,7 +34,7 @@ def record_audio_segments(duration, stop_event, device=0,  bruit_reduction=True,
 
     k = 1
 
-    print("Enregistrement de la parole.")
+    print("Speech recording.")
 
     log= []
 
@@ -46,13 +44,13 @@ def record_audio_segments(duration, stop_event, device=0,  bruit_reduction=True,
                 
                 
                 audio_folder = "src/transcription/tests"
-                # Récupérer la liste des fichiers .wav existants dans le dossier
+
                 existing_files = {f for f in os.listdir(audio_folder) if f.endswith(".wav")}
 
-                # Filtrer les entrées : on garde uniquement celles dont le filename existe vraiment
+
                 log = [entry for entry in log if entry["filename"] in existing_files]
 
-                # Sauvegarder le JSON nettoyé
+
                 with open(log_path, "w", encoding="utf-8") as f:
                     json.dump(log, f, indent=4, ensure_ascii=False)
                        
@@ -76,7 +74,7 @@ def record_audio_segments(duration, stop_event, device=0,  bruit_reduction=True,
                 end_time = datetime.now()
             
             
-                # Charger le JSON existant
+
                 if os.path.exists(log_path):
                     with open(log_path, "r", encoding="utf-8") as f:
                         log = json.load(f)
@@ -91,17 +89,16 @@ def record_audio_segments(duration, stop_event, device=0,  bruit_reduction=True,
                 
                 log.append(entry)
                 
-                                # Sauvegarde du JSON après chaque segment
+
                 with open(log_path, "w", encoding="utf-8") as f:
                     json.dump(log, f, indent=4, ensure_ascii=False)
 
                 k += 1
-            print("Event est bien set")
 
     except KeyboardInterrupt:
-        print("\nArrêt demandé par l'utilisateur (Ctrl+C).")
+        print("\nUser requested shutdown (Ctrl+C).")
 
-        # Sauvegarde du dernier segment partiel (si existant)
+
         if 'frames' in locals() and len(frames) > 0:
             recording = np.concatenate(frames, axis=0).squeeze()
             if bruit_reduction:
@@ -119,7 +116,8 @@ def record_audio_segments(duration, stop_event, device=0,  bruit_reduction=True,
 
             with open(log_path, "w", encoding="utf-8") as f:
                 json.dump([entry], f, indent=4, ensure_ascii=False)
-                                
+                     
+           
 if __name__ == "__main__":
 
     folder_tests = Path("src/transcription/tests")
@@ -134,8 +132,7 @@ if __name__ == "__main__":
         enregistrement_thread = threading.Thread(target = record_audio_segments, args=(5, stop_event, 1))
         enregistrement_thread.start()
     except KeyboardInterrupt:
-        print("Arrêt demandé par l'utilisateur")
+        print("User requested shutdown (Ctrl+C).")
         stop_event.set()
-        print("Attente de la fin de record_loop")
         enregistrement_thread.join()
-        print("Fin.")
+        print("End.")
