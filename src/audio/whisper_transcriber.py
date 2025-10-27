@@ -1,6 +1,7 @@
 from audio_cleaner import clean_audio_transcription
 from dictionary.prompts import WHISPER_PROMPT
 from pathlib import Path
+from typing import Tuple, Union, Optional
 
 import numpy as np
 
@@ -11,7 +12,11 @@ import json
 # 'tiny',  'base', 'small', 'medium', 'large-v1', 'large-v2', 'large-v3', 'large', 'large-v3-turbo', 'turbo'
 model = whisper.load_model("large-v3-turbo")
 
-def whisper_transcribe(audio_path, prompt=WHISPER_PROMPT, pause=True):
+def whisper_transcribe(
+    audio_path: Union[str, Path],
+    prompt: str = WHISPER_PROMPT,
+    pause: bool = True
+) -> Optional[Tuple[str, str]]:
     """
     Transcribes an audio file to text using a Whisper model.
 

@@ -13,7 +13,11 @@ model_segm = Model.from_pretrained(
 
 pipeline = VoiceActivityDetection(segmentation=model_segm)
 
-def speech_activity_splitter(audio_path, min_duration_on=3.0, min_duration_off=2.0):
+def speech_activity_splitter(
+    audio_path: Path,
+    min_duration_on: float = 3.0,
+    min_duration_off: float = 2.0
+) -> None:
     """
     Performs voice activity detection (VAD) on an audio file, 
     segments the audio into speech parts, and saves each segment as a WAV file.

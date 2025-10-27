@@ -1,5 +1,6 @@
 from pathlib import Path
 from datetime import datetime
+from threading import Event
 
 import sounddevice as sd
 import soundfile as sf
@@ -13,7 +14,13 @@ import threading
 # To list available audio input devices :
 # python3 -m sounddevice
 
-def record_audio_segments(duration, stop_event, device = 0,  bruit_reduction=True, samplerate=16000):
+def record_audio_segments(
+    duration: float,
+    stop_event: Event,
+    device: int = 0,
+    bruit_reduction: bool = True,
+    samplerate: int = 16000
+) -> None:
     """
     Continuously records consecutive audio segments and saves them in a temporary folder.
     Recording stops either manually with Ctrl+C or automatically after `duration` seconds per segment.
