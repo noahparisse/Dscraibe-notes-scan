@@ -33,8 +33,8 @@ def record_audio_segments(
         samplerate (int, optional): Audio sampling rate in Hz. Defaults to 16000.
     """
     
-    os.makedirs("src/transcription/tests", exist_ok=True)
-    log_path = os.path.join("src/transcription/tests", "audio_brut.json")
+    os.makedirs("src/audio/tests", exist_ok=True)
+    log_path = os.path.join("src/audio/tests", "audio_brut.json")
 
     if os.path.exists(log_path):
         os.remove(log_path)
@@ -50,7 +50,7 @@ def record_audio_segments(
             while not stop_event.is_set():
                 
                 
-                audio_folder = "src/transcription/tests"
+                audio_folder = "src/audio/tests"
 
                 existing_files = {f for f in os.listdir(audio_folder) if f.endswith(".wav")}
 
@@ -65,7 +65,7 @@ def record_audio_segments(
                 start_time = datetime.now()
                 safe_time = start_time.strftime("%Y%m%d_%H%M%S")
                 filename = f"record_chunk_{k}_{safe_time}.wav"
-                filepath = os.path.join("src/transcription/tests", filename)
+                filepath = os.path.join("src/audio/tests", filename)
 
                 frames = []
                 while (datetime.now() - start_time).total_seconds() < duration:
@@ -127,7 +127,7 @@ def record_audio_segments(
            
 if __name__ == "__main__":
 
-    folder_tests = Path("src/transcription/tests")
+    folder_tests = Path("src/audio/tests")
     
     for f in folder_tests.glob("*.wav"):
         try:

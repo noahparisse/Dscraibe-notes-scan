@@ -39,7 +39,7 @@ def speech_activity_splitter(
     pipeline.instantiate(hyper_parameters)
     vad = pipeline(audio_path)
 
-    log_path = os.path.join("src/transcription/tmp", "transcriptions_log.json")
+    log_path = os.path.join("src/audio/tmp", "transcriptions_log.json")
     logs_folder = os.path.dirname(log_path)
     os.makedirs(logs_folder, exist_ok=True)
 
@@ -56,7 +56,7 @@ def speech_activity_splitter(
         
     filename_brut = audio_path.name
 
-    brut_json_path = "src/transcription/tests/audio_brut.json"
+    brut_json_path = "src/audio/tests/audio_brut.json"
     if not os.path.exists(brut_json_path):
         print(f"Fichier introuvable: {brut_json_path} — saut de VADe pour {audio_path}")
         return
@@ -94,7 +94,7 @@ def speech_activity_splitter(
         segment = waveform[:, start:end]
         
         segment_filename = f"{os.path.splitext(os.path.basename(audio_path))[0]}_segment_{i}.wav"
-        segment_path = os.path.join("src/transcription/tmp", segment_filename)
+        segment_path = os.path.join("src/audio/tmp", segment_filename)
         
         torchaudio.save(segment_path, segment, sr)
         
@@ -121,13 +121,13 @@ def speech_activity_splitter(
     with open(log_path, "w", encoding="utf-8") as f:
         json.dump(logs, f, indent=4, ensure_ascii=False)
 
-    with open("src/transcription/tests/audio_brut.json", "r") as f:
+    with open("src/audio/tests/audio_brut.json", "r") as f:
         data = json.load(f)
     
     data = [entry for entry in data if entry.get("filename") != filename_brut]
 
         
-    with open("src/transcription/tests/audio_brut.json", "w") as f:
+    with open("src/audio/tests/audio_brut.json", "w") as f:
         json.dump(data, f, indent=4)
     
     os.remove(audio_path)
@@ -135,7 +135,7 @@ def speech_activity_splitter(
     
 if __name__ == "__main__":
     
-    folder = Path("src/transcription/tests")
+    folder = Path("src/audio/tests")
 
     files = list(folder.glob("*.wav"))
 

@@ -28,7 +28,7 @@ def whisper_transcribe(
                                 If False, removes existing logs for the file and deletes the audio. Defaults to True.
     """
     
-    log_path = os.path.join("src/transcription/tmp", "transcriptions_log.json")
+    log_path = os.path.join("src/audio/tmp", "transcriptions_log.json")
 
 
     if os.path.exists(log_path):
@@ -93,7 +93,7 @@ def whisper_transcribe(
     return predicted_sentence, cleaned
 
 if __name__ == "__main__":
-    folder = Path("src/transcription/tmp")
+    folder = Path("src/audio/tmp")
     for audio_path in folder.glob("*.wav"): 
         print(audio_path)
         whisper_transcribe(audio_path)

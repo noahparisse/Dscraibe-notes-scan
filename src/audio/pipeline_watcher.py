@@ -58,13 +58,13 @@ if __name__ == "__main__":
         recording_thread = threading.Thread(target=record_audio_segments, args=(RECORD_DURATION, stop_event, DEVICE_INDEX))
         recording_thread.start()
         
-        folder_tmp = Path("src/transcription/tmp")
-        folder_tests = Path("src/transcription/tests")
+        folder_tmp = Path("src/audio/tmp")
+        folder_tests = Path("src/audio/tests")
         
-        with open("src/transcription/pause_status.json", "r") as f:
+        with open("src/audio/pause_status.json", "r") as f:
             cfg = json.load(f)
         cfg["pause"] = True  
-        with open("src/transcription/pause_status.json", "w") as f:
+        with open("src/audio/pause_status.json", "w") as f:
             json.dump(cfg, f)
             
         # Cleanup leftover recording chunks from previous runs
@@ -114,7 +114,7 @@ if __name__ == "__main__":
                 )
             )
             
-            with open("src/transcription/pause_status.json", "r") as f:
+            with open("src/audio/pause_status.json", "r") as f:
                 cfg = json.load(f)
             pause_status = cfg.get("pause", True)
             
