@@ -28,7 +28,13 @@ last_save_time = 0.0
 def save_detection(img: np.ndarray, quads: list[np.ndarray]) -> None:
     """
     Save detected quadrilaterals from an image with perspective correction.
-    - quads: List of contours (4 points each) returned by detection (approxPolyDP).
+
+    Args:
+        img (np.ndarray): Input image.
+        quads (list[np.ndarray]): List of quadrilateral contours, each with 4 points, returned by shape_detector.py.
+
+    Returns:
+        None
     """
     global last_save_time
 

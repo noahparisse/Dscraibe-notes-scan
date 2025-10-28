@@ -387,7 +387,13 @@ def is_htr_buggy(ocr_text: str, cleaned_text: str = "") -> tuple[bool, str]:
 
 def clean_added_text(text: str) -> str:
     """
-    Clean a block of diff-like text by removing prefixes and deleted lines
+    Cleans a block of diff-like text by removing prefixes and deleted lines.
+
+    Args:
+        text (str): Input text containing diff-like markers (lines starting with '+ Ligne X', '- Ancienne ligne X', or '~ Ligne X').
+
+    Returns:
+        str: The cleaned text with prefixes removed and deleted lines ignored.
     """
     cleaned_lines = []
     for line in text.splitlines():

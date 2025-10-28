@@ -13,9 +13,11 @@ from src.proc.paper_detection.shape_detector import shape_detector
 
 def tune_shape_detector_camera() -> dict[str, float]:
     """
-    Interactive tuner for shape_detector
-    """
+    Interactive tuner for shape_detector.
 
+    Returns:
+        dict[str, float]: Dictionary containing the values of the tuned parameters.
+    """
     # Default values (sufficient for most cases)
     BILATERAL_D = 5
     BILATERAL_SIGMA_COLOR = 20

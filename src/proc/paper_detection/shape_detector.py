@@ -33,8 +33,15 @@ MIN_VALUE: int = 175               # Minimum brightness to consider a region whi
 
 def preprocessed_image(img: np.ndarray, bilateral_d: int = BILATERAL_D, bilateral_sigma_color: int = BILATERAL_SIGMA_COLOR, bilateral_sigma_space:int = BILATERAL_SIGMA_SPACE) -> np.ndarray:
     """
-    Convert the image to grayscale and apply a bilateral filter
-    to reduce noise while preserving edges.
+    Convert the image to grayscale and apply a bilateral filter to reduce noise while preserving edges.
+
+    Args:
+        img (np.ndarray): Input image.
+        bilateral_d (int, optional): Neighborhood diameter for bilateral filtering.
+        bilateral_sigma_color (int, optional): Filter strength for color differences.
+        bilateral_sigma_space (int, optional): Filter strength for spatial distance.
+    Returns:
+        np.ndarray: Preprocessed image after grayscale conversion and bilateral filtering.
     """
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     denoised = cv2.bilateralFilter(gray, bilateral_d, bilateral_sigma_color, bilateral_sigma_space)
@@ -46,13 +53,30 @@ def shape_detector(img: np.ndarray, bilateral_d: int = BILATERAL_D, bilateral_si
                 morph_kernel_size: int = MORPH_KERNEL_SIZE, morph_iterations: int = MORPH_ITERATIONS, poly_epsilon_factor: float = POLY_EPSILON_FACTOR,
                 min_area_ratio: float = MIN_AREA_RATIO, max_saturation: int = MAX_SATURATION, min_value: int = MIN_VALUE) -> list[np.ndarray]:
     """
-    Detect quadrilateral shapes in the image that likely correspond to sheets of paper
-    
+    Detect quadrilateral shapes in the image that likely correspond to sheets of paper.
+
     Steps:
     - Preprocess image (grayscale + bilateral filter)
     - Detect edges using Canny and close gaps with morphology
     - Approximate contours to polygons
-    - Filter quadrilaterals by area, convexity, and color (white)
+    - Filter quadrilaterals by shape, area, convexity, and color (white)
+
+    Args:
+        img (np.ndarray): Input image.
+        bilateral_d (int, optional): Neighborhood diameter for bilateral filtering.
+        bilateral_sigma_color (int, optional): Filter strength for color differences.
+        bilateral_sigma_space (int, optional): Filter strength for spatial distance.
+        canny_threshold1 (int, optional): Lower threshold for Canny edge detection.
+        canny_threshold2 (int, optional): Upper threshold for Canny edge detection.
+        morph_kernel_size (int, optional): Kernel size used for morphological closing.
+        morph_iterations (int, optional): Number of iterations for morphological operations.
+        poly_epsilon_factor (float, optional): Factor for polygon approximation (fraction of perimeter).
+        min_area_ratio (float, optional): Minimum area ratio relative to image to keep polygon.
+        max_saturation (int, optional): Maximum saturation to consider a region as white.
+        min_value (int, optional): Minimum brightness to consider a region as white.
+
+    Returns:
+        list[np.ndarray]: List of detected quadrilateral contours, each with 4 points.
     """
     proc = preprocessed_image(img, bilateral_d, bilateral_sigma_color, bilateral_sigma_space)
     h, w = img.shape[:2]

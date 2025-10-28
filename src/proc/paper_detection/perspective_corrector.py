@@ -6,7 +6,13 @@ import numpy as np
 
 def order_corners(corners: np.ndarray) -> np.ndarray:
     """
-    Sorts the 4 corners in the order: top-left, top-right, bottom-right, bottom-left
+    Sorts the 4 corners in the order: top-left, top-right, bottom-right, bottom-left.
+
+    Args:
+        corners (np.ndarray): Array of shape (4, 2) containing the coordinates of the corners.
+
+    Returns:
+        np.ndarray: Array of shape (4, 2) with corners ordered as top-left, top-right, bottom-right, bottom-left.
     """
     rect = np.zeros((4, 2), dtype=np.float32)
 
@@ -23,7 +29,13 @@ def order_corners(corners: np.ndarray) -> np.ndarray:
 
 def get_output_size(corners: np.ndarray) -> tuple[int, int]:
     """
-    Compute the output size (width, height) of a quadrilateral based on its corner coordinates
+    Compute the output size (width, height) of a quadrilateral based on its corner coordinates.
+
+    Args:
+        corners (np.ndarray): Array of shape (4, 2) containing the coordinates of the quadrilateral's corners.
+
+    Returns:
+        tuple[int, int]: Width and height of the quadrilateral.
     """
     # Horizontal distances
     width_top = np.linalg.norm(corners[0] - corners[1])
@@ -40,7 +52,14 @@ def get_output_size(corners: np.ndarray) -> tuple[int, int]:
 
 def corrected_perspective(img: np.ndarray, corners: np.ndarray) -> np.ndarray:
     """
-    Applies a perspective correction to straighten the sheet
+    Applies a perspective correction to straighten the sheet.
+
+    Args:
+        img (np.ndarray): Input image.
+        corners (np.ndarray): Array of shape (4, 2) representing the sheet corners.
+
+    Returns:
+        np.ndarray: The perspective-corrected image.
     """
     # Perfect destination rectangle
     corners = order_corners(corners)

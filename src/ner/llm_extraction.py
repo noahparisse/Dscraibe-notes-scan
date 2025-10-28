@@ -56,7 +56,13 @@ ABBREVIATIONS_DICT = {
 def translate_abbreviations(text: str, abbr_dict: dict[str, str] = ABBREVIATIONS_DICT) -> str:
     """
     Translates all uppercase abbreviations found in the text.
-    Returns the translated text.
+
+    Args:
+        text (str): The input text containing possible abbreviations.
+        abbr_dict (dict[str, str], optional): Dictionary mapping abbreviations to their full forms.
+
+    Returns:
+        str: The text with abbreviations replaced by their corresponding full forms.
     """
     # Robust pattern for uppercase abbreviations with hyphens or slashes
     pattern = r'\b[A-ZÀÂÄÇÉÈÊËÏÎÔÙÛÜŸ]+(?:[-/][A-ZÀÂÄÇÉÈÊËÏÎÔÙÛÜŸ]+)*\b'
@@ -86,6 +92,12 @@ def translate_abbreviations(text: str, abbr_dict: dict[str, str] = ABBREVIATIONS
 def format_abbreviations_for_prompt(abbrev_dict: dict[str, str]) -> str:
     """
     Converts the dictionary into a readable list for the prompt.
+
+    Args:
+        abbrev_dict (dict[str, str]): Dictionary mapping abbreviations to their full forms.
+
+    Returns:
+        str: A formatted string listing each abbreviation followed by its full meaning.
     """
     return "\n".join([f"- {k} --> {v}" for k, v in abbrev_dict.items()])
 
@@ -93,7 +105,12 @@ def format_abbreviations_for_prompt(abbrev_dict: dict[str, str]) -> str:
 def extract_entities(text: str) -> dict[str, list[str]]:
     """
     Extracts entities from a French text using the Mistral API.
-    Returns a dict {label: [values]}.
+
+    Args:
+        text (str): The input French text from which to extract entities.
+
+    Returns:
+        dict[str, list[str]]: A dictionary where keys are entity labels and values are lists of extracted entity strings.
     """
     labels = [
         "GEO", "ACTOR", "DATETIME", "EVENT",

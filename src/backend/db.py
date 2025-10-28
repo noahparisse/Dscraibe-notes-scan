@@ -389,8 +389,15 @@ def list_notes_by_note_id(note_id: str, db_path: str = DB_PATH, limit: int = 50)
 
 def list_notes_by_evenement_id(evenement_id: str, db_path: str = DB_PATH, limit: int = 50) -> List[Dict]:
     """
-    Retourne toutes les entrées associées à un evenement_id donné,
-    triées par timestamp descendant.
+    Returns all entries associated with a given evenement_id, sorted by descending timestamp.
+
+    Args:
+        evenement_id (str): The event ID for which to retrieve notes.
+        db_path (str, optional): Path to the SQLite database. 
+        limit (int, optional): Maximum number of notes to return. 
+
+    Returns:
+        List[Dict]: A list of dictionaries, each representing a note with its metadata.
     """
     ensure_db(db_path)
     con = sqlite3.connect(db_path)
@@ -414,9 +421,17 @@ def list_notes_by_evenement_id(evenement_id: str, db_path: str = DB_PATH, limit:
 
 def find_existing_event_id(entities_new: Dict, db_path: str = DB_PATH) -> Optional[str]:
     """
-    Parcourt les notes existantes pour voir si une note parle du même événement.
-    Retourne l'evenement_id correspondant, ou None si aucun.
+    Searches existing notes to determine if any note refers to the same event.
+    Returns the corresponding evenement_id, or None if no match is found.
+
+    Args:
+        entities_new (Dict): Dictionary of entities for the new note to compare.
+        db_path (str, optional): Path to the SQLite database. 
+
+    Returns:
+        Optional[str]: The matching evenement_id if found, otherwise None.
     """
+
     con = sqlite3.connect(db_path)
     con.row_factory = sqlite3.Row
     cur = con.cursor()
@@ -450,8 +465,14 @@ def find_existing_event_id(entities_new: Dict, db_path: str = DB_PATH) -> Option
 
 def get_last_event_number_from_db(db_path: str = DB_PATH) -> int:
     """
-    Récupère le dernier numéro d'événement existant dans la base.
-    Si aucun événement n'existe, renvoie 0.
+    Retrieves the last existing event number from the database.
+    Returns 0 if no events exist.
+
+    Args:
+        db_path (str, optional): Path to the SQLite database. 
+
+    Returns:
+        int: The highest event number found, or 0 if none exist.
     """
     con = sqlite3.connect(db_path)
     con.row_factory = sqlite3.Row
