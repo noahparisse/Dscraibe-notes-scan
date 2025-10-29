@@ -1,57 +1,214 @@
-# Fichier principal : lance tous les services nécessaires à l'application
+"""
+Main application launcher - orchestrates all system services.
+
+This module starts and manages all components of the note detection system:
+- Frontend UI (Streamlit)
+- Paper detection (camera/YOLO/Raspberry Pi)
+- Audio transcription pipeline
+- Database initialization
+
+All services run as background processes with synchronized lifecycle management.
+"""
 import sys
 import os
+REPO_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if REPO_PATH not in sys.path:
+    sys.path.insert(0, REPO_PATH)
+
 import subprocess
+import sys
 import time
 
+from logger_config import setup_logger
+
+logger = setup_logger(__name__)
+
+# =============================================================================
+# Configuration Constants
+
+# Service startup delay (seconds)
+# Time to wait between launching each service to ensure proper initialization
+SERVICE_STARTUP_DELAY: float = 0.5
+
+# Enable/disable individual services
+ENABLE_FRONTEND: bool = True
+ENABLE_PAPER_DETECTION: bool = True
+ENABLE_YOLO_TRACKER: bool = False  # Advanced paper detection (optional)
+ENABLE_RASPBERRY_PI: bool = False  # Physical camera integration (optional)
+ENABLE_AUDIO_PIPELINE: bool = True
+
+# Database cleanup on startup
+CLEAR_DATABASE_ON_STARTUP: bool = True
+
+# =============================================================================
+
+
 def main():
-    # BASE_DIR correspond au chemin absolu du dossier contenant ce script (src)
+    """
+    Launch all application services in coordinated fashion.
+
+    Workflow:
+    1. Optionally clear database (fresh start)
+    2. Launch frontend UI (Streamlit)
+    3. Launch paper detection service(s)
+    4. Launch audio transcription pipeline
+    5. Monitor all processes until user interruption
+
+    All subprocesses inherit stdout/stderr for unified logging.
+    On shutdown (KeyboardInterrupt or error), all processes are gracefully terminated.
+    """
+    # Determine base directory (src folder containing this script)
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    PROJECT_ROOT = os.path.abspath(os.path.join(BASE_DIR, ".."))
 
-    # Pour le front :
+    # Service paths
     streamlit_path = os.path.join(BASE_DIR, "frontend/app_streamlit.py")
-
-    # Pour la capture vidéo :
-    video_capture_path = os.path.abspath(os.path.join(BASE_DIR, "proc/paper_detection/video_capture.py"))
+    video_capture_path = os.path.join(BASE_DIR, "proc/paper_detection/video_capture.py")
     yolo_path = os.path.join(BASE_DIR, "proc/paper_detection/yolo_tracker_photos.py")
     raspberry_path = os.path.join(BASE_DIR, "raspberry/launch_rasp.py")
-
-    # Pour l'audio
     audio_path = os.path.join(BASE_DIR, "audio/pipeline_watcher.py")
+    clear_db_path = os.path.join(BASE_DIR, "backend/clear_db.py")
 
     processes = []
+
     try:
-        # Nettoyer la base de données au lancement
-        clear_db_path = os.path.join(BASE_DIR, "backend/clear_db.py")
-        subprocess.run([sys.executable, clear_db_path], check=True)
+        # Step 1: Database initialization
+        if CLEAR_DATABASE_ON_STARTUP:
+            logger.info("Clearing database for fresh start")
+            try:
+                subprocess.run([sys.executable, clear_db_path], check=True)
+                logger.info("Database cleared successfully")
+            except subprocess.CalledProcessError as e:
+                logger.error(f"Failed to clear database: {e}")
+                raise
 
-        # Lancer Streamlit en arrière-plan avec logs dans le terminal principal
-        processes.append(subprocess.Popen(["streamlit", "run", streamlit_path], stdout=sys.stdout, stderr=sys.stderr))
-        print("1) Front (UI) lancé.")
+        # Step 2: Launch frontend UI
+        if ENABLE_FRONTEND:
+            logger.info("Starting frontend UI (Streamlit)")
+            processes.append(
+                subprocess.Popen(
+                    ["streamlit", "run", streamlit_path],
+                    stdout=sys.stdout,
+                    stderr=sys.stderr,
+                )
+            )
+            logger.info("Frontend UI launched successfully")
+            time.sleep(SERVICE_STARTUP_DELAY)
 
-        # Lancer la caméra en arrière-plan avec logs dans le terminal principal et cwd forcé à la racine du projet
-        project_root = os.path.abspath(os.path.join(BASE_DIR, ".."))
-        processes.append(subprocess.Popen([sys.executable, video_capture_path], stdout=sys.stdout, stderr=sys.stderr, cwd=project_root))
-        # processes.append(subprocess.Popen([sys.executable, yolo_path], stdout=sys.stdout, stderr=sys.stderr, cwd=project_root))
-        # processes.append(subprocess.Popen([sys.executable, raspberry_path], stdout=sys.stdout, stderr=sys.stderr, cwd=project_root))
-        print("2) Lancement du système de détection de feuilles de papier.")
+        # Step 3: Launch paper detection services
+        if ENABLE_PAPER_DETECTION:
+            logger.info("Starting paper detection system (video capture)")
+            processes.append(
+                subprocess.Popen(
+                    [sys.executable, video_capture_path],
+                    stdout=sys.stdout,
+                    stderr=sys.stderr,
+                    cwd=PROJECT_ROOT,
+                )
+            )
+            logger.info("Paper detection system launched successfully")
+            time.sleep(SERVICE_STARTUP_DELAY)
 
-        # Lancer l'audio en arrière-plan
-        processes.append(subprocess.Popen([sys.executable, audio_path], stdout=sys.stdout, stderr=sys.stderr))
-        print("3) Microphone actif — numérisation audio en cours.")
+        if ENABLE_YOLO_TRACKER:
+            logger.info("Starting YOLO tracker for advanced paper detection")
+            processes.append(
+                subprocess.Popen(
+                    [sys.executable, yolo_path],
+                    stdout=sys.stdout,
+                    stderr=sys.stderr,
+                    cwd=PROJECT_ROOT,
+                )
+            )
+            logger.info("YOLO tracker launched successfully")
+            time.sleep(SERVICE_STARTUP_DELAY)
 
-        print("=> Tous les process ont été lancés en arrière-plan.")
-        print("Le système numérise toutes les informations (notes manuscrites et parole).")
+        if ENABLE_RASPBERRY_PI:
+            logger.info("Starting Raspberry Pi camera integration")
+            processes.append(
+                subprocess.Popen(
+                    [sys.executable, raspberry_path],
+                    stdout=sys.stdout,
+                    stderr=sys.stderr,
+                    cwd=PROJECT_ROOT,
+                )
+            )
+            logger.info("Raspberry Pi integration launched successfully")
+            time.sleep(SERVICE_STARTUP_DELAY)
+
+        # Step 4: Launch audio transcription pipeline
+        if ENABLE_AUDIO_PIPELINE:
+            logger.info("Starting audio transcription pipeline")
+            processes.append(
+                subprocess.Popen(
+                    [sys.executable, audio_path], stdout=sys.stdout, stderr=sys.stderr
+                )
+            )
+            logger.info("Audio pipeline launched successfully")
+            time.sleep(SERVICE_STARTUP_DELAY)
+
+        # Summary of launched services
+        active_services = []
+        if ENABLE_FRONTEND:
+            active_services.append("Frontend UI")
+        if ENABLE_PAPER_DETECTION:
+            active_services.append("Paper Detection")
+        if ENABLE_YOLO_TRACKER:
+            active_services.append("YOLO Tracker")
+        if ENABLE_RASPBERRY_PI:
+            active_services.append("Raspberry Pi")
+        if ENABLE_AUDIO_PIPELINE:
+            active_services.append("Audio Pipeline")
+
+        logger.info(
+            f"All services launched successfully ({len(processes)} processes)"
+        )
+        logger.info(f"Active services: {', '.join(active_services)}")
+        logger.info(
+            "System is now digitizing handwritten notes and audio transcriptions"
+        )
+        logger.info("Press Ctrl+C to stop all services")
+
+        # Step 5: Monitor processes indefinitely
         while True:
+            # Check if any process has died unexpectedly
+            for i, p in enumerate(processes):
+                if p.poll() is not None:
+                    logger.warning(
+                        f"Process {i+1} ({active_services[i]}) terminated unexpectedly with code {p.returncode}"
+                    )
+
             time.sleep(1)
+
     except KeyboardInterrupt:
-        print("Arrêt demandé par l'utilisateur.")
+        logger.info("Shutdown requested by user (Ctrl+C)")
+
     except Exception as e:
-        print(f"Erreur inattendue : {e}")
+        logger.error(f"Unexpected error in main loop: {e}", exc_info=True)
+
     finally:
-        for p in processes:
-            p.terminate()
-        print("Tous les processus ont été terminés.")
+        # Graceful shutdown: terminate all child processes
+        logger.info("Shutting down all services")
+        for i, p in enumerate(processes):
+            try:
+                p.terminate()
+                logger.debug(f"Terminated process {i+1}")
+            except Exception as e:
+                logger.warning(f"Failed to terminate process {i+1}: {e}")
+
+        # Wait briefly for processes to exit cleanly
+        time.sleep(1)
+
+        # Force kill any remaining processes
+        for i, p in enumerate(processes):
+            if p.poll() is None:
+                try:
+                    p.kill()
+                    logger.debug(f"Force killed process {i+1}")
+                except Exception as e:
+                    logger.warning(f"Failed to kill process {i+1}: {e}")
+
+        logger.info("All services shut down successfully")
+
 
 if __name__ == "__main__":
     main()
