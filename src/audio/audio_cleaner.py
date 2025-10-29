@@ -32,7 +32,7 @@ def clean_audio_transcription(texte: str) -> str:
     )
 
     response = client.chat.complete(
-        model="mistral-large-latest",
+        model="mistral-small-latest",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.0,
     )

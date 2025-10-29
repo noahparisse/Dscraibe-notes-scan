@@ -47,6 +47,10 @@ RÈGLES DE CORRECTION :
    - Numéros de téléphone : **supprime les espaces**.  
    - Tensions : **normalise en kV**.  
    - “cost” → **COSE**.  
+   
+RÉPONSE FINALE (obligatoire)
+    - Si l'entrée ne contient aucune information exploitable (par exemple, juste un point ".") : renvoie une CHAÎNE VIDE (exactement "").
+    - Sinon, renvoie UNIQUEMENT le texte final normalisé, sans balises, sans ``` et sans commentaires.
 
 Texte à corriger :
     <<<

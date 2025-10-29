@@ -120,7 +120,6 @@ def postprocess_normalized(text: str) -> str:
 
 # --- Fonction principale ---
 def image_transcription(image_path: str) -> str:
-
     # 1. OCR brut
     url = 'https://atr.ocelus.teklia.com/api/v1/transcribe/'
     headers = {
@@ -253,15 +252,15 @@ def image_transcription(image_path: str) -> str:
     SMACC déclenché hier soir
 
     RÉPONSE FINALE (obligatoire)
-- Si l'entrée ne contient aucune information exploitable (par exemple, juste un point ".") : renvoie une CHAÎNE VIDE (exactement "").
-- Sinon, renvoie UNIQUEMENT le texte final normalisé, sans balises, sans ``` et sans commentaires.
-Contenu à traiter :
-<<<
-{ocr_text}
->>>
+    - Si l'entrée ne contient aucune information exploitable (par exemple, juste un point ".") : renvoie une CHAÎNE VIDE (exactement "").
+    - Sinon, renvoie UNIQUEMENT le texte final normalisé, sans balises, sans ``` et sans commentaires.
+    Contenu à traiter :
+    <<<
+    {ocr_text}
+    >>>
     """
     response = client.chat.complete(
-        model="mistral-large-latest",
+        model="mistral-small-latest",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.0
     )

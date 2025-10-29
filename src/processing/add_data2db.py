@@ -11,8 +11,8 @@ REPO_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if REPO_PATH not in sys.path:
     sys.path.insert(0, REPO_PATH)
 
-from src.processing.mistral_ocr_llm import image_transcription
-# from src.processing.teklia_ocr_llm import image_transcription
+#from src.processing.mistral_ocr_llm import image_transcription
+from src.processing.teklia_ocr_llm import image_transcription
 
 from src.backend.db import (
     DB_PATH,
@@ -100,7 +100,7 @@ def add_data2db(image_path: str, db_path: str = DB_PATH):
         #             est très similaire à la nouvelle note \n
         #             {len(s_new)}{s_new}""")
 
-        if len(s_prev) - len(s_new) < 35 and len(s_new) - len(s_prev) < 35 and SequenceMatcher(None, s_prev, s_new).ratio() > 0.5 :
+        if len(s_prev) - len(s_new) < 35 and len(s_new) - len(s_prev) < 35 and SequenceMatcher(None, s_prev, s_new).ratio() > 0.1 :
             print(f"""Brigade anti-répétition : note similaire trouvée en BDD avec score : {SequenceMatcher(None, s_prev, s_new).ratio()} \n
                   Note de la BDD \n
              {len(s_prev)}]{s_prev} \n
