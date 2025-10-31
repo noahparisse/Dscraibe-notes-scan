@@ -1,22 +1,18 @@
 from ultralytics import YOLO
 import os
 import numpy as np
-import torch
 import matplotlib.pyplot as plt
 import cv2
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
-# Charge ton modèle finetuné
-model = YOLO(os.path.join(BASE_DIR, "../../detection_model/best-segment.pt"))
-
-# metrics = model.val(data=os.path.join(BASE_DIR, "../../../datasets_yolo/blank-sheet-segmentation/data.yaml"), split="test")
-# print(metrics)
+# Load fine-tuned model
+model = YOLO(os.path.join(BASE_DIR, "./archived_models/best-segment.pt"))
 
 test_set_dir = os.path.join(BASE_DIR, "./data/set/images")
 results = model.predict(source = test_set_dir)
 
-# Données pour l'affichage des masques de segmentation sur les images
+# Data for displaying segmentation masks on images
 image_index = 0
 window_index = 1
 max_col = 4
@@ -34,12 +30,12 @@ for result in results:
 
     img_display = cv2.resize(result.orig_img, (mask.shape[1], mask.shape[0]))
 
-    # Colorer le masque en bleu (BGR) puis convertir en RGB
+    # Color the mask blue (BGR) and then convert it to RGB
     mask_color = np.zeros_like(img_display)
-    mask_color[mask > 0] = [0, 0, 255]  # rouge en BGR (donc bleu en RGB si cv2.imshow)
+    mask_color[mask > 0] = [0, 0, 255]  # Red in BGR (so it appears blue in RGB when using cv2.imshow)
     overlay = cv2.addWeighted(img_display, 1.0, mask_color, 0.5, 0)
 
-    # Afficher
+    # Display
     axes[image_index].imshow(cv2.cvtColor(overlay, cv2.COLOR_BGR2RGB))
     axes[image_index].set_title(f"Image {image_name}")
     axes[image_index].axis("off")

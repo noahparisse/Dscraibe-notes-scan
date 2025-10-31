@@ -23,7 +23,7 @@ def evaluate_folder(gt_dir, pred_dir, iou_threshold):
         gt_path = os.path.join(gt_dir, fname)
         pred_path = os.path.join(pred_dir, fname)
         if not os.path.exists(pred_path):
-            print(f"⚠️ Pas de prédiction pour {fname}")
+            print(f"Pas de prédiction pour {fname}")
             continue
 
         gt = load_mask(gt_path)
@@ -62,7 +62,7 @@ def evaluate_folder(gt_dir, pred_dir, iou_threshold):
 gt_dir = os.path.join(BASE_DIR, "./data/set/gt_labels")
 pred_yoloseg_dir = os.path.join(BASE_DIR, "./data/yolo-seg")
 pred_yolodetect_dir = os.path.join(BASE_DIR, "./data/yolo-detect")
-pred_alex_dir = os.path.join(BASE_DIR, "./data/alex-model")
+pred_alex_dir = os.path.join(BASE_DIR, "./data/edges-based-model")
 pred_moha_dir = os.path.join(BASE_DIR, "./data/yolo-seg-moha")
 
 print("==> YOLO-seg")
@@ -80,12 +80,12 @@ metrics_yolosegmoha = evaluate_folder(gt_dir, pred_moha_dir, iou_threshold)
 for k, v in metrics_yolosegmoha.items():
     print(f"{k:>12}: {v:.4f}" if isinstance(v, float) else f"{k}: {v}")
 
-print("\n==> Modèle d'Alex")
-metrics_alex = evaluate_folder(gt_dir, pred_alex_dir, iou_threshold)
-for k, v in metrics_alex.items():
+print("\n==> Edges-based model")
+metrics_edges_based = evaluate_folder(gt_dir, pred_alex_dir, iou_threshold)
+for k, v in metrics_edges_based.items():
     print(f"{k:>12}: {v:.4f}" if isinstance(v, float) else f"{k}: {v}")
 
-# Comparaison rapide
-print("\n📊 Comparaison")
+# Quick comparison
+print("\nComparaison")
 for k in ["mIoU", "mean Dice", "Correct images", "Mean pixel Precision", "Mean pixel Recall", "Mean pixel Accuracy"]:
-    print(f"{k:>20}: YOLO-seg = {metrics_yoloseg[k]:.4f} | YOLO-detect = {metrics_yolodetect[k]:.4f} | YOLO-seg-moha = {metrics_yolosegmoha[k]:.4f} | Modèle d'Alex = {metrics_alex[k]:.4f}")
+    print(f"{k:>20}: YOLO-seg = {metrics_yoloseg[k]:.4f} | YOLO-detect = {metrics_yolodetect[k]:.4f} | YOLO-seg-moha = {metrics_yolosegmoha[k]:.4f} | Edges-based model = {metrics_edges_based[k]:.4f}")
