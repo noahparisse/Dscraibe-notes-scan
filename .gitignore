@@ -134,11 +134,8 @@ data
 # Logs
 logs/
 
-# YOLO model weights & temp outputs
-src/paper_detection/yolo/model/
+# Paper detection outputs
 src/paper_detection/tmp/
-datasets_yolo/
-runs/
 
 # Audio temp directory
 src/audio/tmp/
@@ -147,16 +144,6 @@ src/audio/tmp/
 tests/
 src/recog/archives
 src/recog/test_set/
-test_MLB/
-voice_assistant/
-
-# Benchmark / Large assets
-src/paper_detection/benchmark/data
-src/paper_detection/benchmark/Yolo-seg.pt
-
-# Notebooks (large local ones)
-src/compute_diff_tests.ipynb
-src/test_full_pipeline.ipynb
 
 # Logs
 src/summary/log.txt
