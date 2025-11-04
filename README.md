@@ -24,6 +24,21 @@
 
 ---
 
+## 🎬 Demo
+
+**Watch a 1-minute demonstration** of D-ScrAibe in action:
+
+📹 **[View Demo Video](docs/demo.mp4)**
+
+The demo showcases:
+- Real-time paper detection with YOLO tracking
+- Handwriting recognition and text normalization
+- Automatic entity extraction from dispatcher notes
+- Event grouping and timeline visualization in the Streamlit UI
+- Audio recording with voice activity detection and transcription
+
+---
+
 ## Overview
 
 # D-ScrAibe – Digitization System for RTE Dispatcher Notes
