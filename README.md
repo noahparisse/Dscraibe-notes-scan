@@ -706,10 +706,8 @@ print(f"Deleted {deleted_count} entries")
 
 ### Development Team
 
-**Project Lead:**
-- Tom Amirault — [tom.amirault@student-cs.fr](mailto:tom.amirault@student-cs.fr)
-
 **Core Developers:**
+- Tom Amirault — [tom.amirault@student-cs.fr](mailto:tom.amirault@student-cs.fr)
 - Mohammed Lbakali — [mohammed.lbakali@student-cs.fr](mailto:mohammed.lbakali@student-cs.fr)
 - Alexandre Corrard — [alexandre.corrard@student-cs.fr](mailto:alexandre.corrard@student-cs.fr)
 - Noah Parisse — [noah.parisse@student-cs.fr](mailto:noah.parisse@student-cs.fr)
